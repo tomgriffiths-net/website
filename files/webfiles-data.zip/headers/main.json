@@ -1,0 +1,10 @@
+{
+    "webName": "My Website",
+    "webNameLink": "\/",
+    "buttons": [
+        {
+            "name": "Admin Panel",
+            "link": "\/admin\/"
+        }
+    ]
+}

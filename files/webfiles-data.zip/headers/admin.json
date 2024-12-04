@@ -1,0 +1,27 @@
+{
+    "webName": "Admin",
+    "webNameLink": "\/admin\/",
+    "buttons": [
+        {
+            "name": "Home",
+            "link": "\/"
+        },
+        {
+            "name": "Editor",
+            "dropdown": [
+                {
+                    "name": "Headers",
+                    "link": "\/admin\/editor\/header\/"
+                }
+            ]
+        },
+        {
+            "name": "McServers",
+            "link": "\/admin\/mcservers\/"
+        },
+        {
+            "name": "Settings",
+            "link": "\/admin\/settings\/"
+        }
+    ]
+}
