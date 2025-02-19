@@ -948,18 +948,11 @@ class website_mcservers{
     public static function sendCompanionData($id, string $action, string $payload = ""):array|bool{
         $return = false;
         if(self::validateId($id,false)){
-            $retried = false;
-            retry:
 
-            $socket = @stream_socket_client("tcp://127.0.0.1:25" . $id, $socketErrorCode, $socketErrorString, 3);
+            $socket = @stream_socket_client("tcp://127.0.0.1:25" . $id, $socketErrorCode, $socketErrorString, 1);
             if(!$socket){
-                if($retried === false){
-                    $retried = true;
-                    communicator_client::runfunction("cmd::newWindow('php\\php.exe cli.php command \"mcservers start-companion " . $id . "\" no-loop true');");
-                    sleep(4);
-                    goto retry;
-                }
-                return false;
+                communicator_client::runfunction("cmd::newWindow('php\\php.exe cli.php command \"mcservers start-companion " . $id . "\" no-loop true');");
+                return ['state'=>'loading','newoutput'=>''];
             }
 
             $data['action'] = $action;

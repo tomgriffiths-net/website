@@ -33,6 +33,13 @@ function serverState(serverId){
                 serverState(serverId);
             }, 2000);
         }
+        else if(serverData['state'] === "loading"){
+            statebutton.style.backgroundColor = "lightgrey";
+            statebutton.innerHTML = "Loading...";
+            setTimeout(() => {
+                serverState(serverId);
+            }, 5000);
+        }
         else{
             statebutton.style.backgroundColor = "lightgrey";
             statebutton.innerHTML = "Unknown";
