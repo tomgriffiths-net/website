@@ -2,37 +2,16 @@
 require '../../../localfiles/global.php';
 
 if(isset($_GET['ajax'])){
-    if(isset($_GET['scale'])){
-        if(is_numeric($_GET['scale'])){
-            $scale = $_GET['scale'];
-            $inc = 16;
-            if($scale === "1.25"){
-                $inc = 9;
-            }
-            elseif($scale === "1.5"){
-                $inc = 6;
-            }
-            elseif($scale === "1.75"){
-                $inc = 4;
-            }
-            $inc--;
-            $min = "001";
-            $max = str_pad($min + $inc,3,"0",STR_PAD_LEFT);
-            $total = $max - $min + 1;
-            $iterations = 0;
-            while(istheseserversexisting($min,$max)){
-                $min = str_pad($min,3,"0",STR_PAD_LEFT);
-                $max = str_pad($min + $inc,3,"0",STR_PAD_LEFT);
-                $range = $min . '-' . $max;
-                echo '<a style="font-size:1.2rem; margin-left:7px;" class="link" href="/mcservers/list/?range=' . $range . '">Servers ' . $range . '</a><br>';
-                $min = str_pad($max+1,3,"0",STR_PAD_LEFT);
-                $max = str_pad($min + $inc,3,"0",STR_PAD_LEFT);
-                $iterations++;
-                if($iterations > $total){
-                    break;
-                }
-            }
-        }
+    $inc = 15;
+    $min = "001";
+    $max = str_pad($min + $inc,3,"0",STR_PAD_LEFT);
+    while(istheseserversexisting($min,$max)){
+        $min = str_pad($min,3,"0",STR_PAD_LEFT);
+        $max = str_pad($min + $inc,3,"0",STR_PAD_LEFT);
+        $range = $min . '-' . $max;
+        echo '<a style="font-size:1.2rem; margin-left:7px;" class="link" href="/mcservers/list/?range=' . $range . '">Servers ' . $range . '</a><br>';
+        $min = str_pad($max+1,3,"0",STR_PAD_LEFT);
+        $max = str_pad($min + $inc,3,"0",STR_PAD_LEFT);
     }
     exit;
 }
@@ -87,7 +66,7 @@ if($range === false){
 
         </div>
         <script>
-            ajax("index.php?ajax=1&scale="+window.devicePixelRatio,"listdiv",0);
+            ajax("index.php?ajax=1","listdiv",0);
         </script>
     ';
 }
