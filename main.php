@@ -1,5 +1,4 @@
 <?php
-//Your Variables go here: $GLOBALS['website']['YourVariableName'] = YourVariableValue
 class website{
     public static function command($line):void{
         $lines = explode(" ",$line);
@@ -45,9 +44,8 @@ class website{
         else{
             echo "Unknown command!\n";
         }
-    }//Run when base command is class name, $line is anything after base command (string). e.g. > [base command] [$line]
-    //public static function init():void{}//Run at startup
-    public static function newSite($httpdPath,$directory=false,$filesurl=false,$filesdir=false,$logsdir=false,$tempdir=false,$communicator=false,$name="MySite"):int{
+    }
+    public static function newSite($httpdPath,$directory=false,$filesurl=false,$filesdir=false,$logsdir=false,$tempdir=false,$communicator=false,$name="MySite",$password="1234"):int{
         if(!is_admin::check()){
             mklog('warning','You need administrator permissions to do that',false);
         }
@@ -101,6 +99,8 @@ class website{
                 }
                 $websettings['php-exec-path'] = $cwd . '\\php\\php.exe';
                 $websettings['cli-root'] = $cwd;
+                $websettings['communicator'] = ['name'=>'PHP-CLI_Website', 'password'=>communicator::getPasswordEncoded()];
+                $websettings['password'] = password_hash($password, PASSWORD_DEFAULT);
                 json::writeFile($dir . '/localdata/settings.json',$websettings,true);
 
                 $fileLines = file($dir . '/localfiles/global.php');
@@ -170,6 +170,13 @@ class website{
             $i++;
         }
         echo commandline_list::table($columnTitles,$rowsData);
+    }
+    public static function numberOfSites():int|false{
+        $sites = settings::read('sites');
+        if(!is_array($sites)){
+            return false;
+        }
+        return count($sites);
     }
     public static function removeSite(int $siteId){
         $settings = settings::read('sites/' . $siteId);
@@ -275,14 +282,8 @@ class website{
                     }
                 }
                 //DO STUFF
-                $siteid = self::newSite($httpdPath,false,false,false,false,false,true,"MySite");
-                if(!is_int($siteid)){
-                    mklog('warning','Failed to get valid site id',false);
-                    return;
-                }
-                echo "Site ID: " . $siteid . "\n";
                 passwordCreation:
-                echo "Please enter a password for website user: admin\n";
+                echo "Please enter a password for the website:\n";
                 $password = user_input::await();
                 echo "Repeat:\n";
                 $password2 = user_input::await();
@@ -290,9 +291,12 @@ class website{
                     echo "Passwords do not match!\n";
                     goto passwordCreation;
                 }
-                if(!self::createUser("admin",$password)){
-                    echo "Unable to set admin information.\n";
+                $siteid = self::newSite($httpdPath,false,false,false,false,false,true,"MySite",$password);
+                if(!is_int($siteid)){
+                    mklog('warning','Failed to get valid site id',false);
+                    return;
                 }
+                echo "Site ID: " . $siteid . "\n";
             }
             else{
                 mklog("general","Unable to create default site as is has allready been created",false);
@@ -301,27 +305,5 @@ class website{
         else{
             mklog("general","Unable to create default site as XAMPP is allready installed",false);
         }
-    }
-    public static function createUser(string $username, string $password):bool{
-        $localfilesDir = getcwd() . "\\mywebsite\\localdata";
-        if(is_dir($localfilesDir)){
-            if(preg_match('/[^a-z0-9_]/',$username) !== false){
-                $username = strtolower($username);
-                $userFile = $localfilesDir . "\\users\\" . $username . "\\login-info.json";
-                $password = password_hash($password, PASSWORD_DEFAULT);
-                $userData = array(
-                    'name' => ucfirst($username),
-                    'email' => $username . '@localhost',
-                    'useruid' => $username,
-                    'password' => $password,
-                    'created' => time::stamp()
-                );
-                json::writeFile($userFile,$userData);
-                if(is_file($userFile)){
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 }

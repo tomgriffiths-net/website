@@ -1,6 +1,10 @@
 <?php
 startup::checkGetRequest();
 
+if(!isset($skipAuth)){
+    $skipAuth = false;
+}
+
 //NEXT_LINE_IS_SETTINGS_FILE
 $settingsFile = "D:\\Projects\\PHP-CLI\\mywebsite\\localdata\\settings.json";
 $globalSettings = startup::loadGlobalSettings($settingsFile);
@@ -10,29 +14,13 @@ $uri = startup::setupUri();
 startup::startSession();
 $useruid = startup::setupUseruid();
 
-if(substr($uri,1,5) !== "login"){
-    $loginRequired = true;
-}
-if(isset($loginRequired)){
-    if($loginRequired === true){
-        startup::ensureLogin($useruid);
-    }
+if(!$skipAuth){
+    startup::ensureLogin($useruid);
 }
 
-if(substr($uri,1,5) === "admin"){
-    $adminRequired = true;
-}
-if(isset($adminRequired)){
-    if($adminRequired === true){
-        startup::ensureAdmin($useruid);
-    }
-}
-
-if(communicator::getName() === false){
-    communicator::setName("PHP-CLI_Website");
-}
-if(communicator::getPasswordEncoded() === false){
-    communicator::setPassword("password");
+if(!website_communicator::getName() || !website_communicator::getPasswordEncoded()){
+    echo "Communicator credentials error";
+    exit;
 }
 
 //Set commonly used settings to variables
@@ -53,13 +41,19 @@ class startup{
         }
     }
     public static function loadGlobalSettings($settingsFile){
-        if(is_file($settingsFile)){
-            return json::readFile($settingsFile);
-        }
-        else{
-            echo "File not found";
+        if(!is_file($settingsFile)){
+            echo "Settings file not found";
             exit;
         }
+        
+        $json = website_json::readFile($settingsFile);
+
+        if(!is_array($json)){
+            echo "Failed to read settings file";
+            exit;
+        }
+
+        return $json;
     }
     public static function setTimeZone(){
         if(date_default_timezone_set("Europe/London") == false){
@@ -88,14 +82,8 @@ class startup{
         return false;
     }
     public static function ensureLogin($useruid){
-        if($useruid === false){
-            mklog('general','User prompted for login at ' . $GLOBALS['uri'],true);
-            html::loadurl('/login/');
-        }
-    }
-    public static function ensureAdmin($useruid){
         if($useruid !== "admin"){
-            html::loadurl('/');
+            html::loadurl('/login');
         }
     }
     public static function logPing(){
@@ -110,8 +98,6 @@ class startup{
 }
 function mklog($type,$message,$verbose=true){
     global $globalSettings;
-    //Set correct time zone
-    date_default_timezone_set("Europe/London");
     $microtime = floor(microtime(true)*1000);
     //Set current time and date with miliseconds
     $time = date("Y-m-d_H:i:s:") . substr($microtime, 10, 3);
@@ -196,7 +182,7 @@ function setSetting(string $settingName, mixed $settingValue, bool $overwrite=fa
             goto end;
         }
 
-        json::writeFile($globalSettings['localdir'] . "\\settings.json",$globalSettings,true);
+        website_json::writeFile($globalSettings['localdir'] . "\\settings.json",$globalSettings,true);
 
         $successful = true;
     }
@@ -228,6 +214,12 @@ function settingEvalString(string $settingName):string|false{
 
     return $settingCodeString;
 }
+function runfunction(string $function):mixed{
+    return website_communicator_client::runfunction($function);
+}
+function runcommand(string $command):bool{
+    return website_communicator_client::runcommand($command);
+}
 class html{
     public static function fullend($scriptLink = false){
         html::end($scriptLink);
@@ -250,7 +242,11 @@ class html{
         html::top($headerId,$pageTitle,$dontCloseStyleTag);
     }
     public static function top($headerId = "main",$pageTitle = "", $dontCloseStyleTag = false){
-        $headerData = json::readFile($GLOBALS['localDir'] . "\\headers\\" . $headerId . ".json",true,array("webName"=>"My Website","webNameLink"=>"/","buttons"=>array(0=>array("name"=>"Home","link"=>"/"))));
+        $headerData = website_json::readFile($GLOBALS['localDir'] . "\\headers\\" . $headerId . ".json");
+        if(!is_array($headerData)){
+            $headerData = array("webName"=>"My Website","webNameLink"=>"/","buttons"=>array(0=>array("name"=>"Home","link"=>"/")));
+        }
+
         if($pageTitle === ""){
             $pageTitle = $headerData['webName'];
         }
@@ -387,61 +383,15 @@ class html{
         return json_decode(base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT)),true);
     }
 }
-class users{
-    public static function uidExists($username){
-        $username = preg_replace('/[^a-z0-9_]/', '_', strtolower($username));
-        return is_file($GLOBALS['globalSettings']['localdir'] . '\\users\\' . $username . '\\login-info.json');
-    }
-    public static function usersName($useruid):string{
-        $return = "";
-        if(self::uidExists($useruid)){
-            $return = $useruid;
-            $name = json::readFile($GLOBALS['globalSettings']['localdir'] . "\\users\\" . $useruid . "\\login-info.json")['name'];
-            if(!empty($name)){
-                $return = $name;
-            }
-        }
-        return $return;
-    }
-    public static function loginUser($username, $pwd){
-        if(self::uidExists($username)){
-            $username = preg_replace('/[^a-z0-9_]/', '_', strtolower($username));
-            $userFile = $GLOBALS['localDir'] . "\\users\\" . $username . "\\login-info.json";
-            $userData = json::readFile($userFile);
-    
-            if(password_verify($pwd, $userData['password'])){
-                session_start();
-                $_SESSION["useruid"] = $userData['useruid'];
-                if($userData['useruid'] === "admin"){
-                    html::loadurl('/admin/');
-                }
-                else{
-                    html::loadurl('/');
-                }
-            }
-            else{
-                html::loadurl('/login/?error=wrongpassword');
-            }
-        }
-        else{
-            html::loadurl('/login/?error=userdoesnotexist');
-        }
-    }
-}
-class communicator{
+
+class website_communicator{
     // Settings
-    public static function setName(string $name):bool{
-        return setSetting('communicator/name', $name, true);
-    }
     public static function getName():string|bool{
         global $globalSettings;
         if(isset($globalSettings['communicator']['name'])){
             return $globalSettings['communicator']['name'];
         }
         return false;
-    }
-    public static function setPassword(string $password):bool{
-        return setSetting('communicator/password',base64_encode($password),true);
     }
     public static function getPasswordEncoded():string|bool{
         global $globalSettings;
@@ -522,7 +472,7 @@ class communicator{
         return @stream_socket_accept($socketServer, $timeout);
     }
 }
-class communicator_client{
+class website_communicator_client{
     public static function runfunction(string $function):mixed{
         $result = self::run('127.0.0.1', 8080, array("type"=>"function_string","payload"=>$function));
         if($result["success"]){
@@ -535,7 +485,7 @@ class communicator_client{
         return $result["success"];
     }
     public static function run(string $ip, int $port, array $data):array{
-        $socket = communicator::connect($ip,$port,false,$socketError,$socketErrorString);
+        $socket = website_communicator::connect($ip,$port,false,$socketError,$socketErrorString);
         if($socket !== false){
             return self::execute($socket,$data);
         }
@@ -558,17 +508,17 @@ class communicator_client{
             goto end;
         }
 
-        $data['name'] = communicator::getName();
-        $data['password'] = communicator::getPasswordEncoded();
+        $data['name'] = website_communicator::getName();
+        $data['password'] = website_communicator::getPasswordEncoded();
 
         $data = base64_encode(json_encode($data));
 
-        if(!communicator::send($socket,$data)){
+        if(!website_communicator::send($socket,$data)){
             $return["error"] = "Error sending data";
             goto end;
         }
 
-        $result = communicator::receive($socket);
+        $result = website_communicator::receive($socket);
         if($result === false){
             $return["error"] = "Error receiving data";
             goto end;
@@ -584,357 +534,55 @@ class communicator_client{
         $return["result"] = $result;
 
         end:
-        communicator::close($socket);
+        website_communicator::close($socket);
         return $return;
     }
 }
-class data_types{
-    public static function string_to_float(string $string):float{
-        //Check if string is a number
-        if(is_numeric($string)){
-            //Return value
-            $return = $string;
-        }
-        else{
-            //Return 0
-            $return = 0;
-        }
-        //Convert return to float
-        return floatval($return);
-    }
-    public static function string_to_integer(string $string):int{
-        //Check if string is a number
-        if(is_numeric($string)){
-            //Return value
-            $return = $string;
-        }
-        else{
-            //Return 0
-            $return = 0;
-        }
-        //Convert return to integer
-        return intval($return);
-    }
-    public static function string_to_boolean(string $string):bool{
-        //Assume that the value is false
-        $return = false;
-        //Check if string is "true"
-        if($string === "true"){
-            $return = true;
-        }
-        return $return;
-    }
-    public static function boolean_to_string(bool $boolean):string{
-        //Assume that string is representing false
-        $return = "false";
-        //Check if boolean is true
-        if($boolean === true){
-            //Return "true"
-            $return = "true";
-        }
-        return $return;
-    }
-    public static function convert_string(string $value):int|float|bool|string{
-        $return = $value;
-        if(is_numeric($value)){
-            //Check if the string contains a point
-            if(strpos($value,'.')){
-                //Convert string to float
-                $return = self::string_to_float($value);
-            }
-            else{
-                //Convert string to integer
-                $return = self::string_to_integer($value);
-            }
-        }
-        elseif($value === "true" || $value === "false"){
-            //convert string to boolean
-            $return = self::string_to_boolean($value);
-        }
-        return $return;
-    }
-    public static function convert_to_string(mixed $value):string{
-        $return = $value;
-        if($value === true || $value === false){
-            $return = self::boolean_to_string($value);
-        }
-        return $return;
-    }
-    public static function xmlStringToArray(string $xml):array{
-        $xml1 = simplexml_load_string($xml);
-        return json_decode(json_encode($xml1),true);
-    }
-}
-class files{
-    public static function globRecursive(string $base, string $pattern, $flags = 0):array{
-        $flags = $flags & ~GLOB_NOCHECK;
-        
-        if (substr($base, -1) !== DIRECTORY_SEPARATOR) {
-            $base .= DIRECTORY_SEPARATOR;
-        }
-    
-        $files = glob($base.$pattern, $flags);
-        if (!is_array($files)) {
-            $files = [];
-        }
-    
-        $dirs = glob($base.'*', GLOB_ONLYDIR|GLOB_NOSORT|GLOB_MARK);
-        if (!is_array($dirs)) {
-            return $files;
-        }
-        
-        foreach ($dirs as $dir) {
-            $dirFiles = self::globRecursive($dir, $pattern, $flags);
-            $files = array_merge($files, $dirFiles);
-        }
-    
-        return $files;
-    }
-    public static function ensureFolder(string $dir):bool{
-        if(is_dir($dir)){
-            return true;
-        }
-        elseif(is_file($dir)){
-            return false;
-        }
-        else{
-            return self::mkFolder($dir);
-        }
-    }
-    public static function mkFolder(string $path):bool{
-        return mkdir($path,0777,true);
-    }
-    public static function mkFile(string $path, $data, $fopenMode = "w"):bool|int{
-        $dir = self::getFileDir($path);
-        if(!is_dir($dir)){
-            self::mkFolder($dir);
-        }
-        $stream = fopen($path,$fopenMode);
-        $return = fwrite($stream,$data);
-        fclose($stream);
-        return $return;
-    }
-    public static function getFileDir(string $path):string{
-        $path = str_replace("/","\\",$path);
-        $pos = strripos($path,"\\");
-        $dir = substr($path,0,$pos);
-        return $dir;
-    }
-    public static function getFileName(string $path):string{
-        $path = str_replace("/","\\",$path);
-        $pos = strripos($path,"\\");
-        $file = substr($path,$pos+1);
-        return $file;
-    }
-    public static function copyFile(string $pathFrom, string $pathTo):bool{
-        $success = false;
-        $dir = self::getFileDir($pathTo);
-        if(!is_file($pathFrom)){
-            goto end;
-        }
-        if(!is_dir($dir)){
-            self::mkFolder($dir);
-        }
-
-        $success = copy($pathFrom,$pathTo);
-
-        end:
-        return $success;
-    }
-    public static function validatePath(string $path, bool $addquotes = false):string{
-        $path = str_replace("/","\\",$path);
-        if(strpos($path," ") && $addquotes){
-            $path = '"' . $path . '"';
-        }
-        return $path;
-    }
-    public static function getFileExtension(string $fileName):string{
-        $ext = "";
-        $pos = strripos($fileName,".");
-        if($pos !== false){
-            $ext = substr($fileName,$pos+1);
-        }
-        return $ext;
-    }
-}
-class json{
-    public static function addToFile($path,$entryKey,$entryValue,$addToTop=true){
-        $existing = self::readFile($path);
-        if($addToTop === true){
-            $new[$entryKey] = $entryValue;
-        }
-        foreach($existing as $key => $value){
-            $new[$key] = $value;
-        }
-        if($addToTop === false){
-            $new[$entryKey] = $entryValue;
-        }
-        self::writeFile($path,$new,true);
-    }
-    public static function readFile($path,$createIfNonexistant=true,$expectedValues=array()){
-        //Chech if file exists
-        $existing = false;
-
-        $existing = is_file($path);
-
-        if($existing){
-            //Check if file can be read
-            $json = file_get_contents($path);
+class website_json{
+    public static function readFile(string $path):mixed{
+        if(is_file($path)){
+            $json = @file_get_contents($path);
             if($json === false){
-                //Error is file cannot be read
                 mklog("warning","Failed to read from file: ". $path);
+                return false;
             }
-            //If file can be read, return array of json values
-            else{
-                return json_decode($json,true);
+            $json = json_decode($json,true);
+            if($json === null){
+                mklog("warning","Failed to decode json from file: ". $path);
+                return false;
             }
+            return $json;
         }
-        else{
-            if($createIfNonexistant){
-                mklog("general","Attempt made to read from nonexistant file: " . $path . ", creating file");
-                txtrw::mktxt($path,json_encode($expectedValues,JSON_PRETTY_PRINT));
-                return $expectedValues;
-            }
-            else{
-                mklog("warning","Attempt made to read from nonexistant file: " . $path);
-            }
-        }
+        return false;
     }
-    public static function writeFile($path,$array,$overwrite=false){
-        //Write file with json text as contents
-        txtrw::mktxt($path,json_encode($array,JSON_PRETTY_PRINT),$overwrite);
-    }
-}
-class math{
-    public static function getClosest($closeNumber,$numberArray){
-        $closest = null;
-        foreach ($numberArray as $item) {
-           if ($closest === null || abs($closeNumber - $closest) > abs($item - $closeNumber)) {
-              $closest = $item;
-           }
-        }
-        return $closest;
-    }
-    public static function tension_smooth_pulley(float $A_mass_kg, float $B_mass_kg, float $gravity = 9.81):float{
-        $accel = self::acceleration_smooth_pulley($A_mass_kg,$B_mass_kg,$gravity);
-        $ma = $B_mass_kg * $accel;
-        $bg = $B_mass_kg * $gravity;
-        $t = 0;
-        if($A_mass_kg > $B_mass_kg){
-            $t = $ma + $bg;
-        }
-        elseif($B_mass_kg > $A_mass_kg){
-            $t = $bg - $ma;
-        }
-
-        return (float) $t;
-
-    }
-    public static function acceleration_smooth_pulley(float $A_mass_kg, float $B_mass_kg, float $gravity = 9.81):float{
-        $A = $A_mass_kg * $gravity;
-        $B = $B_mass_kg * $gravity;
-        if($A > $B){
-            $Fsum = $A - $B;
-        }
-        elseif($B > $A){
-            $Fsum = $B - $A;
-        }
-        else{
-            return (float) 0;
-        }
-        $accelCoeff = $A_mass_kg + $B_mass_kg;
-        $accel = $Fsum / $accelCoeff;
-
-        return (float) $accel;
-
-    }
-}
-class network{
-    public static function ping($ip,$port,$timeout=0.2):bool{
-        //Ping ip and port
-        $conectionStream = @fsockopen($ip, $port, $errno, $errstr, $timeout);
-        //Return true on response, false on failure
-        if($conectionStream !== false) {
-            return true;
-        }
-        else{
+    public static function writeFile(string $path, mixed $value, bool $overwrite=false):bool{
+        $json = json_encode($value,JSON_PRETTY_PRINT);
+        if($json === false){
             return false;
         }
-    }
-}
-class time{
-    public static function stamp(){
-        return floor(microtime(true));
-    }
-    public static function millistamp(){
-        return floor(microtime(true)*1000);
-    }
-}
-class txtrw{
-    public static function mktxt($file,$content,$overwrite = false){
-        //Check if file allready exists
-        if(is_file($file)){
-            //Mark file as not writeable
-            mklog("general","Text file: " . $file . " allready exists");
-            $writeFile = false;
-        }
-        else{
-            //Mark file as writeable
-            $writeFile = true;
-        }
+
+        $writeFile = !is_file($path);
     
-        //Write if overwite is true
         if($overwrite === true){
-            mklog("general","Overwriting text file: " . $file);
             $writeFile = true;
         }
     
         if($writeFile){
-            //Seperate directory from file name
-            $file = str_replace('/',"\\",$file);
-            $dir = substr($file,0,strripos($file,"\\"));
-            //Check if directory does not exist
-            if($dir != "" && $dir != " "){
+            $dir = dirname($path);
+            if($dir !== ""){
+                if(is_file($dir)){
+                    return false;
+                }
                 if(!is_dir($dir)){
-                    mklog("general","File creation attempt in nonexistant directory: " . $dir . ", creating directory");
-                    //Create required directory
-                    if(mkdir($dir,0777,true) == false){
-                        mklog("warning","Unable to create directory: " . $dir);
+                    if(!mkdir($dir,0777,true)){
+                        return false;
                     }
                 }
             }
-            //Open file in write mode
-            $f = fopen($file,"w");
-            //Log error if file cannot be accessed
-            if($f === false){
-                mklog("warning","Unable to access file: ". $file);
-            }
-            //Write file contents
-            if(fwrite($f,$content) === false){
-                //Log if file cannot be written to
-                mklog("warning","Unable to write to file: ". $file);
-            }
-            //Close file
-            fclose($f);
+
+            return (bool) @file_put_contents($path, $json);
         }
-    }
-    public static function readtxt($file){
-        //Check if file exists
-        if(!is_file($file)){
-            //Create file if it does not exist
-            mklog("general","Attempt made to read from file that does not exist, creating file with no contents");
-            self::mktxt($file,"");
-        }
-        else{
-            //Return file contents if it exists
-            $filecontents = file_get_contents($file);
-            if($filecontents === false){
-                mklog("error","Unable to read from file: " . $file);
-            }
-            else{
-                return $filecontents;
-            }
-        }
+        return false;
     }
 }
 class website_mcservers{
@@ -951,7 +599,7 @@ class website_mcservers{
 
             $socket = @stream_socket_client("tcp://127.0.0.1:25" . $id, $socketErrorCode, $socketErrorString, 1);
             if(!$socket){
-                communicator_client::runfunction("cmd::newWindow('php\\php.exe cli.php command \"mcservers start-companion " . $id . "\" no-loop true');");
+                runfunction("cmd::newWindow('php\\php.exe cli.php command \"mcservers start-companion " . $id . "\" no-loop true');");
                 return ['state'=>'loading','newoutput'=>''];
             }
 

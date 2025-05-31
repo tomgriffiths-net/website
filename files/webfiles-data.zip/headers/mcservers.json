@@ -1,0 +1,23 @@
+{
+    "webName": "McServers",
+    "webNameLink": "\/",
+    "buttons": [
+        {
+            "name": "Home",
+            "link": "\/"
+        },
+        {
+            "name": "ServerList",
+            "link": "\/mcservers\/list\/"
+        },
+        {
+            "name": "ServerManager",
+            "dropdown": [
+                {
+                    "name": "Create Server",
+                    "link": "\/mcservers\/manager\/create\/"
+                }
+            ]
+        }
+    ]
+}

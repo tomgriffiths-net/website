@@ -28,7 +28,7 @@ function get2arr(string $get,string $separator = ".."):string{
 if(isset($_GET['submit']) && $id !== false){
     if(isset($_GET['action'])){
         $action = $_GET['action'];
-        $headerData = json::readFile($localDir . "\\headers\\" . $id . ".json");
+        $headerData = website_json::readFile($localDir . "\\headers\\" . $id . ".json");
         if($action === 'delete'){
             $varName = get2arr("button");
             eval('unset(' . $varName . ');');
@@ -103,7 +103,7 @@ if(isset($_GET['submit']) && $id !== false){
             }
         }
     }
-    json::writeFile($localDir . "\\headers\\" . $id . ".json",$headerData,true);
+    website_json::writeFile($localDir . "\\headers\\" . $id . ".json",$headerData,true);
     header('Location: ?id=' . $id);
     exit;
 }
@@ -142,10 +142,10 @@ echo '
         bottom:66px;
     }
 ';
-html::top("admin");
+html::top("main");
 
 if($id !== false){
-    $headerData = json::readFile($localDir . "\\headers\\" . $id . ".json");
+    $headerData = website_json::readFile($localDir . "\\headers\\" . $id . ".json");
     echo '<form action="?id=' . $id . '&submit=true" method="post">
     <input class="account-form-input" type="text" name="headerContent/webName" placeholder="Website Name" value="' . $headerData['webName'] . '">
     <input class="account-form-input" type="text" name="headerContent/webNameLink" placeholder="Website Name Link" value="' . $headerData['webNameLink'] . '">
@@ -198,13 +198,13 @@ if($id !== false){
 
     echo '
         <br>
-        <button class="account-form-submit" type="submit" name="submit">Save Text</button>
+        <button class="account-form-submit" type="submit" name="submit">Save</button>
     </form>
     ';
 }
 else{
-    foreach(glob($GLOBALS['localDir'] . "/headers/*.json") as $header){
-        $header = files::getFileName($header);
+    foreach(glob($localDir . "/headers/*.json") as $header){
+        $header = basename($header);
         $header = substr($header,0,strripos($header,"."));
         echo '<a class="link" href="?id=' . $header . '">' . $header . '</a><br>';
     }

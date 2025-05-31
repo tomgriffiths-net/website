@@ -1,10 +1,19 @@
 {
-    "webName": "My Website",
+    "webName": "PHP-CLI Website",
     "webNameLink": "\/",
     "buttons": [
         {
-            "name": "Admin Panel",
-            "link": "\/admin\/"
+            "name": "Packages",
+            "link": "\/packages\/"
+        },
+        {
+            "name": "Admin",
+            "dropdown": [
+                {
+                    "name": "Page Headers",
+                    "link": "\/admin\/editor\/header\/"
+                }
+            ]
         }
     ]
 }
