@@ -1,0 +1,10 @@
+{
+    "webName": "ConductorServer",
+    "webNameLink": "\/",
+    "buttons": [
+        {
+            "name": "Home",
+            "link": "\/"
+        }
+    ]
+}
