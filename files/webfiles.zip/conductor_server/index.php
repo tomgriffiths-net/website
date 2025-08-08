@@ -14,7 +14,7 @@ $loops = 0;
 foreach([
     'Successful jobs:' => '\'$successful && $count < 20\', 0, true',
     'Failed jobs:'     => '\'$failed && $count < 20\', 0, true',
-    'Processing jobs:' => '\'$processing && $count < 20\', 0, true',
+    'Processing jobs:' => '\'$processing && $count < 20\', 0, false',
     'Pending jobs:'    => '\'!$taken && $count < 20\', 0, false'
 ] as $colName => $colExp){
     $results = runfunction('conductor_server::filterJobs(' . $colExp . ')');

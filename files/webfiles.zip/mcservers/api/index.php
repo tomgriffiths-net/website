@@ -511,7 +511,7 @@ function arrayToEvalString(array $data):string{
         else{
             if(is_int($value) || is_float($value)){$valuetext = $value;}
             elseif(is_bool($value)){
-                $valuetext = data_types::boolean_to_string($value);
+                $valuetext = ($value ? 'true': 'false');
             }
             else{
                 $valuetext = '"' . $value . '"';
