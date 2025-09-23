@@ -1,14 +1,14 @@
 {
     "id_name": "website",
-    "version": 24,
+    "version": 26,
     "author": "tom",
     "name": "Configurable Website",
     "description": "",
     "dependencies": {
-        "apache": 4,
+        "apachemgr": 2,
         "character_sender": 1,
+        "communicator": 5,
         "communicator_client": 5,
-        "e_xampp_installer": 1,
         "is_admin": 1,
         "mysql": 1,
         "network": 1,
