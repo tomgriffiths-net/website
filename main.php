@@ -14,6 +14,21 @@ class website{
         foreach($defaultSettings as $settingName => $settingValue){
             settings::set($settingName, $settingValue, false);
         }
+
+        if(settings::read('autoStartHoster') && !is_string($GLOBALS['arguments']['command'])){
+            $hostPort = settings::read('hosterPort');
+            $hostIp = settings::read('hosterIP');
+
+            if(is_int($hostPort) && is_string($hostIp)){
+                if(!network::ping($hostIp, $hostPort, 2)){
+                    mklog(1, 'Communicator is not running, starting automatically');
+                    cmd::newWindow('php\\php cli.php command "timetest website::hostSites();"');
+                }
+            }
+            else{
+                mklog(2, 'Failed to read hosterPort or hosterIP setting');
+            }
+        }
     }
     public static function command($line):void{
         $lines = explode(" ",$line);
