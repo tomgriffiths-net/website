@@ -1,0 +1,63 @@
+.site{
+    width: 800px;
+    height: fit-content;
+    background-color: lightgrey;
+    border-radius: 5px;
+    margin-left: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+    padding-bottom: 10px;
+}
+.name{
+    padding: 3px;
+    height: 40px;
+    width: 100%;
+    border-bottom: 1px solid gray;
+}
+.name > span{
+    margin-left: 5px;
+    font-size: 22px;
+    color: black;
+}
+
+.site.on > .name > .start-icon, .site.off > .name > .stop-icon, .servers > .on > .start-icon, .servers > .off > .stop-icon, .processing > .start-icon, .processing > .stop-icon{
+    filter: saturate(0%);
+    cursor: unset;
+    pointer-events: none;
+}
+.site.on > .name, .servers > .on{
+    background-color: rgb(109, 255, 109);
+}
+.site.onish > .name, .processing{
+    background-color: rgb(255, 198, 74) !important;
+}
+.site.off > .name, .servers > .off{
+    background-color: rgb(255, 104, 104);
+}
+
+.start-icon, .stop-icon{
+    float: right;
+    height: 100%;
+    width: auto;
+    margin-left: 8px;
+    margin-right: 2px;
+    cursor: pointer;
+}
+
+.servers{
+    margin-top: 10px;
+    margin-left: 15px;
+    margin-right: 5px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.servers > div{
+    height: 30px;
+}
+.servers > div > span{
+    margin-left: 6px;
+    font-size: 18px;
+    color: black;
+    position: relative;
+    top:2px;
+}

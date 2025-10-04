@@ -5,7 +5,6 @@ if(!isset($skipAuth)){
     $skipAuth = false;
 }
 
-//NEXT_LINE_IS_SETTINGS_FILE
 $settingsFile = "D:\\Projects\\PHP-CLI\\mywebsite\\localdata\\settings.json";
 $globalSettings = startup::loadGlobalSettings($settingsFile);
 
@@ -452,24 +451,6 @@ class website_communicator{
             $timeout = null;
         }
         return @stream_socket_client("tcp://$ip:$port", $socketErrorCode, $socketErrorString, $timeout);
-    }
-    public static function createServer(string $ip, int $port, int|false $timeout, &$socketErrorCode, &$socketErrorString):mixed{
-        $socket = @stream_socket_server("tcp://$ip:$port", $socketErrorCode, $socketErrorString);
-        if($socket === false){
-            return false;
-        }
-        if($timeout !== false){
-            if(@stream_set_timeout($socket, $timeout) === false){
-                return false;
-            }
-        }
-        return $socket;
-    }
-    public static function acceptConnection($socketServer, float|false $timeout):mixed{
-        if($timeout !== false){
-            $timeout = null;
-        }
-        return @stream_socket_accept($socketServer, $timeout);
     }
 }
 class website_communicator_client{

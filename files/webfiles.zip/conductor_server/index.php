@@ -1,7 +1,7 @@
 <?php
 require '../../localfiles/global.php';
 
-$packages = runfunction('$GLOBALS[\'packages\']');
+$packages = runfunction('pkgmgr::getLoadedPackages();');
 
 html::fullhead("conductor_server","Conductor Server");
 
