@@ -299,7 +299,7 @@ class website{
                     $siteData = settings::read('sites/' . $siteId);
                     if(is_array($siteData)){
                         $autoStartResponse = [];
-                        if(!self::hoster_startSite($siteId, $siteData, $autoStartResponse)){
+                        if(!self::hoster_startSite($siteId, $siteData, $autoStartResponse, $apacheProcs, $mysqls, $logCollectors)){
                             mklog(2, 'Failed to automatically start site ' . $siteId);
                         }
                         if(isset($autoStartResponse['error']) && !empty($autoStartResponse['error'])){
@@ -384,7 +384,7 @@ class website{
 
                 if($message['action'] === "startSite"){
                     foreach($sites as $siteId => $siteData){
-                        if(!self::hoster_startSite($siteId, $siteData, $response)){
+                        if(!self::hoster_startSite($siteId, $siteData, $response, $apacheProcs, $mysqls, $logCollectors)){
                             goto respond;
                         }
                     }
@@ -715,7 +715,7 @@ class website{
             $response['servers'][$siteId][] = $serverNumber;
         }
     }
-    private static function hoster_startSite(int $siteId, array $siteData, array &$response):bool{
+    private static function hoster_startSite(int $siteId, array $siteData, array &$response, array &$apacheProcs, array &$mysqls, array &$logCollectors):bool{
         if(!isset($siteData['servers']) || !is_array($siteData['servers']) || empty($siteData['servers'])){
             $response['error'] = 'The specified site has no servers';
             return false;
