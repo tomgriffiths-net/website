@@ -4,7 +4,7 @@ class website{
         $defaultSettings = [
             'hosterPort' => 7000,
             'hosterIP'   => '127.0.0.1',
-            'autoStart'  => [],
+            'autoStartSites'  => [],
             'autoStartHoster' => true,
 
             'communicatorPort' => 8080,
@@ -292,14 +292,14 @@ class website{
         $mysqls = [];
         $break = false;
 
-        $autoStarts = settings::read('autoStart');
+        $autoStarts = settings::read('autoStartSites');
         if(is_array($autoStarts)){
-            foreach($autoStarts as $siteId => $autoStart){
-                if($autoStart && is_int($siteId)){
+            foreach($autoStarts as $siteId){
+                if(is_int($siteId)){
                     $siteData = settings::read('sites/' . $siteId);
                     if(is_array($siteData)){
                         $autoStartResponse = [];
-                        if(!self::hoster_startSite($siteId, $siteData, $response)){
+                        if(!self::hoster_startSite($siteId, $siteData, $autoStartResponse)){
                             mklog(2, 'Failed to automatically start site ' . $siteId);
                         }
                         if(isset($autoStartResponse['error']) && !empty($autoStartResponse['error'])){
@@ -412,6 +412,10 @@ class website{
                         if(!self::hoster_stopMysqlServer($mysqlId, $response, $mysqls)){
                             goto respond;
                         }
+                    }
+
+                    foreach($logCollectors as $siteId => $logCollector){
+                        self::hoster_disableLogCollector($siteId, $logCollectors);
                     }
 
                     $break = true;
