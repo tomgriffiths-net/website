@@ -292,6 +292,24 @@ class website{
         $mysqls = [];
         $break = false;
 
+        $autoStarts = settings::read('autoStart');
+        if(is_array($autoStarts)){
+            foreach($autoStarts as $siteId => $autoStart){
+                if($autoStart && is_int($siteId)){
+                    $siteData = settings::read('sites/' . $siteId);
+                    if(is_array($siteData)){
+                        $autoStartResponse = [];
+                        if(!self::hoster_startSite($siteId, $siteData, $response)){
+                            mklog(2, 'Failed to automatically start site ' . $siteId);
+                        }
+                        if(isset($autoStartResponse['error']) && !empty($autoStartResponse['error'])){
+                            mklog(2, 'Autostarting site ' . $siteId . ' gave an error: ' . $autoStartResponse['error']);
+                        }
+                    }
+                }
+            }
+        }
+
         while(true){
             $clientSocket = communicator::acceptConnection($socketServer, 5);
             if($clientSocket){
@@ -366,21 +384,8 @@ class website{
 
                 if($message['action'] === "startSite"){
                     foreach($sites as $siteId => $siteData){
-                        if($siteData['communicator']){
-                            if(!self::isCommunicatorOn()){
-                                mklog(1, 'Communicator is not running, starting automatically');
-                                cmd::newWindow('php\php cli.php command "communicator begin"');
-                            }
-                        }
-
-                        foreach($siteData['servers'] as $server){
-                            if(!self::hoster_startServer($server, $response, $apacheProcs, $mysqls)){
-                                goto respond;
-                            }
-                        }
-
-                        if($siteData['logsCollector']){
-                            self::hoster_enableLogCollector($siteId, $siteData, $logCollectors);
+                        if(!self::hoster_startSite($siteId, $siteData, $response)){
+                            goto respond;
                         }
                     }
                 }
@@ -705,6 +710,36 @@ class website{
         if(!in_array($serverNumber, $response['servers'][$siteId])){
             $response['servers'][$siteId][] = $serverNumber;
         }
+    }
+    private static function hoster_startSite(int $siteId, array $siteData, array &$response):bool{
+        if(!isset($siteData['servers']) || !is_array($siteData['servers']) || empty($siteData['servers'])){
+            $response['error'] = 'The specified site has no servers';
+            return false;
+        }
+        
+        $return = true;
+
+        if(isset($siteData['communicator']) && $siteData['communicator']){
+            if(!self::isCommunicatorOn()){
+                mklog(1, 'Communicator is not running, starting automatically');
+                cmd::newWindow('php\php cli.php command "communicator begin"');
+            }
+        }
+
+        foreach($siteData['servers'] as $server){
+            if(!self::hoster_startServer($server, $response, $apacheProcs, $mysqls)){
+                $return = false;
+            }
+        }
+
+        if($siteData['logsCollector']){
+            if(!self::hoster_enableLogCollector($siteId, $siteData, $logCollectors)){
+                $response['error'] = "Failed to start logs collector for site " . $siteId;
+                $return = false;
+            }
+        }
+
+        return $return;
     }
     public static function sendCommand(string $command, array $sites=[], array $servers=[]):array|false{
         foreach(['sites','servers'] as $thing){
