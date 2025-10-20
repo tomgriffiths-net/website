@@ -26,10 +26,10 @@
     top:6px;
     font-size:1.2rem;
 }
-.info{
+.serverinfo{
     position:absolute;
-    bottom:3px;
-    left:6px;
+    bottom:4px;
+    left:8px;
 }
 .statebutton{
     position:absolute;
@@ -40,69 +40,4 @@
     height:40px;
     border-style:none;
     background-color:lightgrey;
-}
-.backupbutton{
-    position: absolute;
-    height: 35px;
-    bottom: 50px;
-    border-radius: 5px;
-    right:5px;
-}
-.rconbutton{
-    position: absolute;
-    height: 35px;
-    bottom: 50px;
-    border-radius: 5px;
-    right:80px;
-}
-.publicbutton{
-    position:absolute;
-    bottom:116px;
-    right:5px;
-    border-radius:4px;
-    height:20px;
-    font-size: 0.8rem;
-    
-}
-.deleteicon{
-    position:absolute;
-    bottom:6px;
-    left:5px;
-    width:30px;
-    height:auto;
-}
-.memory{
-    position:absolute;
-    bottom:4px;
-    right:140px;
-    width:400px;
-    height:36px;
-    border-radius: 5px;
-    overflow:hidden;
-    border-color: black;
-    background-color: rgb(77, 77, 77);
-    border-style: solid;
-    border-width: 2px;
-}
-.memoryProgress{
-    height: 100%;
-    -webkit-mask:linear-gradient(#fff 0 0);
-    mask:linear-gradient(#fff 0 0);
-    transition: width 0.4s ease-in-out;
-}
-.memoryProgress::before{
-    position:absolute;
-    content:"";
-    top:0;
-    left:0;
-    right:0;
-    bottom:0;
-    background-image: linear-gradient(to right, lime, lime, lime, lime, yellow, red);
-}
-.memoryText{
-    position:absolute;
-    top:4px;
-    left:5px;
-    z-index: 5;
-    background-color: transparent;
 }

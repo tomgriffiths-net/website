@@ -62,7 +62,7 @@ elseif($f === "delete_server"){
             <h2>Are you sure you want to delete server ' . $id . '?<br>This cannot be undone!</h2>
             <br>
             <a href="' . $_SERVER['REQUEST_URI'] . '&confirm=1">
-                <button onclick="document.getElementById(\'loaddiv\').innerHTML = \'<h3>Deleting Server...</h3>\';" class="account-form-submit" style="background-color:red;border-color:red">
+                <button onclick="document.getElementById(\'loaddiv\').innerHTML = \'<h3>Deleting Server...</h3>\';" class="btn btn-danger" style="background-color:red;border-color:red">
                     YES!
                 </button>
             </a>
@@ -70,7 +70,7 @@ elseif($f === "delete_server"){
             <div id="loaddiv"></div>
             <br>
             <br>
-            <a href="/mcservers/list/"><button class="account-form-submit">NO!</button></a>
+            <a href="/mcservers/list/"><button class="btn btn-success">NO!</button></a>
         ';
 
         html::end();
@@ -114,11 +114,11 @@ elseif($f === "manager_page_home"){
                 <button onclick="changeState(); this.blur()" style="background-color:orange; font-size:1.3em;" id="statebutton">Loading...</button>
             </div>
         </div>
-        <div id="homepage_extraButtons">
-            <button disabled id="homepage_backupButton" onclick="backupServer(); this.blur();">Backup</button>
-            <button disabled id="homepage_killButton" onclick="killServer(); this.blur();">Kill</button>
-            <input id="homepage_commandInput" type="text"></input>
-            <button disabled id="homepage_commandButton" onclick="sendCommand(); this.blur();">Send Command</button>
+        <div class="d-flex align-items-center gap-2">
+            <button disabled id="homepage_backupButton" onclick="backupServer(); this.blur();" class="btn btn-primary">Backup</button>
+            <button disabled id="homepage_killButton" onclick="killServer(); this.blur();" class="btn btn-danger">Kill</button>
+            <input id="homepage_commandInput" type="text" class="form-control" style="max-width:200px;"></input>
+            <button disabled id="homepage_commandButton" onclick="sendCommand(); this.blur();" class="btn btn-success">Send Command</button>
         </div>
         <div id="homepage_eventLog">
             <pre id="homepage_eventLogText"></pre>
@@ -143,17 +143,16 @@ elseif($f === "manager_page_files"){
             $fileNameID = str_replace(".",":_dot_:",$fileName);
             $fileNameID = str_replace("\\",":_slash_:",$fileNameID);
             echo '
-            <div class="dropdown" style="margin-bottom:5px;">
-                <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" style="background-color:white;">' . $fileName . '<span class="caret"></span></button>
-                <ul class="dropdown-menu">
-                    <li><a>
-                        <textarea style="height:400px;width:700px;" type="text" name="' . $fileNameID . '">' . txtrw::readtxt($dir . $fileName) . '</textarea>
-                    </li></a>
-                </ul>
-            </div>';
+                <div class="dropdown mb-3">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">' . $fileName . '</button>
+                    <ul class="dropdown-menu">
+                        <li><textarea style="height:300px;width:600px;" type="text" name="' . $fileNameID . '">' . file_get_contents($dir . $fileName) . '</textarea></li>
+                    </ul>
+                </div>
+            ';
         }
     }
-    echo '<button class="account-form-submit" type="submit" name="submit">Apply</button>
+    echo '<button class="btn btn-success" type="submit" name="submit">Apply</button>
     </form>';
 }
 elseif($f === "manager_files_submit"){
@@ -162,7 +161,7 @@ elseif($f === "manager_files_submit"){
         if($fileName !== "submit"){
             $fileName = str_replace(":_dot_:",".",$fileName);
             $fileName = str_replace(":_slash_:","\\",$fileName);
-            txtrw::mktxt($dir . $fileName,$fileValue,true);
+            file_put_contents($dir . $fileName,$fileValue);
         }
     }
     html::loadurl('/mcservers/manager/?setPage=files&id=' . $id);
@@ -170,7 +169,7 @@ elseif($f === "manager_files_submit"){
 elseif($f === "manager_page_runtime"){
     $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
     if($serverInfo['capabilities']['hasPropertiesFile'] === true){
-        echo '<button style="height:30px;" onclick="setContentPage(\'runtime_serverproperties\');">server.properties</button>';
+        echo '<button class="btn btn-primary" onclick="setContentPage(\'runtime_serverproperties\');">server.properties</button>';
     }
 }
 elseif($f === "manager_page_runtime_serverproperties"){
@@ -179,6 +178,7 @@ elseif($f === "manager_page_runtime_serverproperties"){
     echo '<form action="/mcservers/api/?function=manager_runtime_serverproperties_submit&id=' . $id . '" method="post">';
     foreach($serverProperties as $propertyName => $propertyValue){
         echo '
+            <style>.form-control, .form-select{max-width:300px; margin-left:1rem; margin-right:1rem;}</style>
             <div style="width:100%; height:50px; overflow:hidden; margin-bottom:5px; border-color:grey; border-radius:5px; border-width:1px; border-style:solid; padding:5px; display:flex; align-items:center;">
                 <div style="width:270px;">
                     <a style="float:right">' . $propertyName . ':</a>
@@ -188,7 +188,7 @@ elseif($f === "manager_page_runtime_serverproperties"){
                     $values = $propertiesSpec[$propertyName]["values"];
                     if(count($values) === 1){
                         if($values[0] === "integer"){
-                            echo '<input class="account-form-input" type="number" ';
+                            echo '<input class="form-control" type="number" ';
                             if(isset($propertiesSpec[$propertyName]["int_min"])){
                                 echo 'min="' . $propertiesSpec[$propertyName]["int_min"] . '" ';
                             }
@@ -198,11 +198,11 @@ elseif($f === "manager_page_runtime_serverproperties"){
                             echo 'name="' . $propertyName . '" value="' . $propertyValue . '">';
                         }
                         else{
-                            echo '<input class="account-form-input" type="text" name="' . $propertyName . '" value="' . $propertyValue . '">';
+                            echo '<input class="form-control" type="text" name="' . $propertyName . '" value="' . $propertyValue . '">';
                         }
                     }
                     else{
-                        echo '<select name="' . $propertyName . '" class="account-form-input">';
+                        echo '<select name="' . $propertyName . '" class="form-select">';
                             foreach($values as $value){
                                 echo '<option value="' . $value . '" '; if($value == $propertyValue){echo 'selected ';} echo '>' . $value . '</option>';
                             }
@@ -216,14 +216,14 @@ elseif($f === "manager_page_runtime_serverproperties"){
                     ';
                 }
                 else{
-                    echo '<input class="account-form-input" type="text" name="' . $propertyName . '" value="' . $propertyValue . '">';
+                    echo '<input class="form-control" type="text" name="' . $propertyName . '" value="' . $propertyValue . '">';
                 }
                 echo '
             </div>
         ';
     }
     echo '
-        <button class="account-form-submit" type="submit" name="submit" onclick="this.innerHTML=\'Loading...\'">Apply</button>
+        <button class="btn btn-success" type="submit" name="submit" onclick="this.innerHTML=\'Loading...\'">Apply</button>
         </form>
     ';
 }
@@ -244,28 +244,28 @@ elseif($f === "manager_runtime_serverproperties_submit"){
 }
 elseif($f === "manager_page_mods"){
     echo '
-        <button style="height:30px;" onclick="setModrinthContentType(\'mod\'); setContentPage(\'mods_addnew\');">Add Mod</button>
+        <button class="btn btn-primary" onclick="setModrinthContentType(\'mod\'); setContentPage(\'mods_addnew\');">Add Mod</button>
         <br>
     ';
     echo listContent(runfunction('mcservers::listContents("' . $id . '","mod")'));
 }
 elseif($f === "manager_page_datapacks"){
     echo '
-        <button style="height:30px;" onclick="setModrinthContentType(\'datapack\'); setContentPage(\'datapacks_addnew\');">Add Datapack</button>
+        <button class="btn btn-primary" onclick="setModrinthContentType(\'datapack\'); setContentPage(\'datapacks_addnew\');">Add Datapack</button>
         <br>
     ';
     echo listContent(runfunction('mcservers::listContents("' . $id . '","datapack")'));
 }
 elseif($f === "manager_page_plugins"){
     echo '
-        <button style="height:30px;" onclick="setModrinthContentType(\'plugin\'); setContentPage(\'plugins_addnew\');">Add Plugin</button>
+        <button class="btn btn-primary" onclick="setModrinthContentType(\'plugin\'); setContentPage(\'plugins_addnew\');">Add Plugin</button>
         <br>
     ';
     echo listContent(runfunction('mcservers::listContents("' . $id . '","plugin")'));
 }
 elseif($f === "manager_page_resourcepacks"){
     echo '
-        <button style="height:30px;" onclick="setModrinthContentType(\'resourcepack\'); setContentPage(\'resourcepacks_addnew\');">Add Resourcepack</button>
+        <button class="btn btn-primary" onclick="setModrinthContentType(\'resourcepack\'); setContentPage(\'resourcepacks_addnew\');">Add Resourcepack</button>
         <br>
     ';
     echo listContent(runfunction('mcservers::listContents("' . $id . '","resourcepack")'));
@@ -484,7 +484,7 @@ function modrinthInitialHtml():string{
     return '
         <div style="width:700px; height:600px; background-color:white; border-radius:5px; padding:5px;">
             <div style="display:flex; height:40px;">
-                <input id="modrinthContentSearchBar" onkeyup="modrinthContentSearchDebounced();" style="width:625px; height:100%" class="form-control mr-sm-2" type="text" placeholder="Search Modrinth">
+                <input id="modrinthContentSearchBar" data-bs-theme="light" onkeyup="modrinthContentSearchDebounced();" style="width:625px; height:100%" class="form-control mr-sm-2" type="text" placeholder="Search Modrinth">
                 <div id="modrinthContentSearchButton" onclick="modrinthContentSearch();" style="position:relative; width:60px; height:100%; border-color:lightgrey; border-radius:5px; border-width:1px; border-style:solid; cursor:pointer;">
                     <img id="modrinthContentSearchButtonImage" style="position:relative; top:50%; left:50%; transform:translate(-50%, -50%); height:30px; filter:invert(100%);" src="' . $GLOBALS['filesUrl'] . '/img/search.png">
                 </div>

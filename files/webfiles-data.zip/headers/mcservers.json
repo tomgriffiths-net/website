@@ -1,5 +1,5 @@
 {
-    "webName": "McServers",
+    "webName": "MCServers",
     "webNameLink": "\/mcservers\/",
     "buttons": [
         {
@@ -7,7 +7,7 @@
             "link": "\/"
         },
         {
-            "name": "ServerList",
+            "name": "Servers list",
             "link": "\/mcservers\/list\/"
         },
         {

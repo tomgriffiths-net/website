@@ -1,0 +1,10 @@
+{
+    "webName": "PHP-CLI Website",
+    "webNameLink": "\/",
+    "buttons": [
+        {
+            "name": "Login",
+            "link": "\/login\/"
+        }
+    ]
+}

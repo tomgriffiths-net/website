@@ -80,13 +80,13 @@ else{
         if(in_array($serverId,$range)){
             echo '
                 <div class="server">
-                    <a class="id">' . $serverId . '</a>
-                    <a class="name" style="color:white" href="/mcservers/manager/?setPage=home&id=' . $serverId . '">' . $serverData['name'] . '</a>
-                    <a class="info">
+                    <span class="id">' . $serverId . '</span>
+                    <a class="name text-truncate" style="color:white; width:100%;" href="/mcservers/manager/?setPage=home&id=' . $serverId . '">' . $serverData['name'] . '</a>
+                    <span class="serverinfo">
                         Type: ' . ucfirst($serverData['version']['type']) . '<br>
                         Version: ' . $serverData['version']['version'] . '<br>
                         Memory: ' . $serverData['run']['max_ram_mb'] . ' MB<br>
-                    </a>
+                    </span>
                     ';
                     echo'
                     <button onclick="changeState(\'' . $serverId . '\');" class="statebutton" id="server' . $serverId . 'statebutton"></button>

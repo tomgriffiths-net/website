@@ -16,9 +16,9 @@ if(isset($_POST['servertype'])){
 html::fullhead("mcservers");
 
 echo '
-    <form id="form1" method="post">
+    <form id="form1" method="post" style="max-width:300px;">
         <h4>Select server version:<br></h4>
-        <select name="servertype" class="account-form-input">
+        <select name="servertype" class="form-select">
             ';
             foreach($types as $type => $url){
                 $name = ucfirst($type);
@@ -27,7 +27,7 @@ echo '
             echo '
         </select>
         <br>
-        <button class="account-form-submit" onclick="this.innerHTML=\'Loading...\'" type="submit" name="submit">Next</button>
+        <button class="btn btn-success" onclick="this.innerHTML=\'Loading...\'" type="submit" name="submit">Next</button>
     </form>
 ';
 

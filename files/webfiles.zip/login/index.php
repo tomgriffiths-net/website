@@ -32,8 +32,10 @@ echo '
         <h4>&nbsp;</h4>
         <h2>Log In</h2>
         <form method="post">
-            <input class="account-form-input" type="password" name="pwd" placeholder="Password">
-            <button class="account-form-submit" type="submit" name="submit" onclick="this.innerHTML=\'Logging in...\'">Log In</button>
+            <div class="container-sm mb-3" style="max-width:400px;">
+                <input class="form-control" type="password" name="pwd" placeholder="Password">
+                <button class="btn btn-success mt-2" type="submit" name="submit" onclick="this.innerHTML=\'Logging in...\'">Log In</button>
+            </div>
         </form>
 ';
 if(is_string($useruid)){

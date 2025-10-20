@@ -61,7 +61,7 @@ class startup{
     }
     public static function setupUri(){
         if(isset($_SERVER["HTTP_HOST"]) && isset($_SERVER["REQUEST_URI"])){
-            return $_SERVER["REQUEST_URI"];
+            return html::normaliseUrl($_SERVER["REQUEST_URI"]);
         }
         else{
             exit;
@@ -220,7 +220,7 @@ function runcommand(string $command):bool{
     return website_communicator_client::runcommand($command);
 }
 class html{
-    public static function fullend($scriptLink = false){
+    public static function fullend(string|false $scriptLink=false){
         html::end($scriptLink);
         if(is_string($scriptLink)){
             $dontCloseScriptTag = true;
@@ -230,7 +230,7 @@ class html{
         }
         html::end2($dontCloseScriptTag);
     }
-    public static function fullhead($headerId = "main", $pageTitle = "", $styleLink = false){
+    public static function fullhead(string $headerId="main", string $pageTitle="", string|false $styleLink=false){
         html::head($styleLink);
         if(is_string($styleLink)){
             $dontCloseStyleTag = true;
@@ -240,16 +240,25 @@ class html{
         }
         html::top($headerId,$pageTitle,$dontCloseStyleTag);
     }
-    public static function top($headerId = "main",$pageTitle = "", $dontCloseStyleTag = false){
-        $headerData = website_json::readFile($GLOBALS['localDir'] . "\\headers\\" . $headerId . ".json");
+    public static function top(string $headerId="main", string $pageTitle="", bool $dontCloseStyleTag=false){
+        $headerData = self::getNavButtons($headerId);
         if(!is_array($headerData)){
-            $headerData = array("webName"=>"My Website","webNameLink"=>"/","buttons"=>array(0=>array("name"=>"Home","link"=>"/")));
+            $headerData = [
+                "webName" => "My Website",
+                "webNameLink" => "/",
+                "buttons" => [
+                    [
+                        "name" => "Home",
+                        "link" => "/"
+                    ]
+                ]
+            ];
         }
 
-        if($pageTitle === ""){
+        if(empty($pageTitle)){
             $pageTitle = $headerData['webName'];
         }
-    
+
         if(!$dontCloseStyleTag){
             echo '</style>';
         }
@@ -257,35 +266,41 @@ class html{
         echo '
             <title>' . $pageTitle . '</title>
         </head>
-        <body>';
+        <body data-bs-theme="dark">';
         echo '
             <div class="wrapper">
-                <nav class="navbar navbar-expand-lg navbar-dark bg-dark"><a class="navbar-brand" href="' . $headerData['webNameLink'] . '">' . $headerData['webName'] . '</a>
-                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent1" aria-controls="navbarSupportedContent1" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="navbarSupportedContent1">
-                        <ul class="navbar-nav mr-auto">
-                            '; 
+                <nav class="navbar navbar-expand-lg bg-body-tertiary">
+                    <div class="container-fluid">
+                        <a class="navbar-brand" href="' . $headerData['webNameLink'] . '">' . $headerData['webName'] . '</a>
+                        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+                        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            ';
                             foreach($headerData['buttons'] as $button){
                                 if(isset($button['dropdown'])){
-                                    echo '<li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown1" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        ' . $button['name'] . '
-                                    </a>
-                                    <div class="dropdown-menu" aria-labelledby="navbarDropdown1">';
-                                    foreach($button['dropdown'] as $dbutton){
-                                        echo '<a class="dropdown-item" href="' . $dbutton['link'] . '">' . $dbutton['name'] . '</a>';
-                                    }
-                                    echo '</div>
-                                    </li>';
+                                    echo '
+                                        <li class="nav-item dropdown">
+                                            <a class="nav-link dropdown-toggle' . (html::isThisCurrentLinkDropdown($button['dropdown']) ? " active" : "") . '" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">' . $button['name'] . '</a>
+                                            <ul class="dropdown-menu">';
+                                                foreach($button['dropdown'] as $dbutton){
+                                                    echo '<li><a class="dropdown-item" href="' . $dbutton['link'] . '">' . $dbutton['name'] . '</a></li>';
+                                                }
+                                            echo '
+                                            </ul>
+                                        </li>
+                                    ';
                                 }
                                 else{
-                                    echo '<li class="nav-item"><a class="nav-link" href="' . $button['link'] . '">' . $button['name'] . '</a></li>';
+                                    echo '<li class="nav-item"><a class="nav-link' . (html::isThisCurrentLink($button['link']) ? " active" : "") . '" href="' . $button['link'] . '">' . $button['name'] . '</a></li>';
                                 }
                             }
                             echo '
                         </ul>
+                        <form class="d-flex" role="search">
+                            <input class="form-control me-2" type="search" style="min-width:300px;" placeholder="Search" aria-label="Search"/>
+                            <button class="btn btn-outline-success" type="submit">Search</button>
+                        </form>
+                        </div>
                     </div>
                 </nav>
             </div>
@@ -293,49 +308,47 @@ class html{
         ';
     }
     public static function start_empty(){
-        // Echo page code
-        echo '<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <meta http-equiv="X-UA-Compatible" content="IE=edge">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body {font-family:DejaVu Sans Mono, monospace; font-weight:600; color:white; background-color:#242324;}
-            </style>
-        </head>
-        <body>
+        echo '
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {font-family:DejaVu Sans Mono, monospace; font-weight:600; color:white; background-color:#242324;}
+                </style>
+            </head>
+            <body>
         ';
     }
     public static function end_empty(){
-        // Echo page code
         echo '
-        </body>
-        </html>';
+            </body>
+            </html>
+        ';
     }
-    public static function head($styleLink = false){
+    public static function head(string|false $styleLink=false){
         echo '<!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="utf-8">
-            <meta http-equiv="X-UA-Compatible" content="IE=edge">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <link href="' . $GLOBALS['filesUrl'] . '/css/bootstrap-4.4.1.css" rel="stylesheet">
-            <link href="' . $GLOBALS['filesUrl'] . '/css/site.css" rel="stylesheet">
-            <script src="' . $GLOBALS['filesUrl'] . '/js/jquery-3.7.1.min.js"></script>
-            <script src="' . $GLOBALS['filesUrl'] . '/js/popper.min.js"></script>
-            <script src="' . $GLOBALS['filesUrl'] . '/js/bootstrap-4.4.1.js"></script>
-            <script src="' . $GLOBALS['filesUrl'] . '/js/functions.js"></script>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+            <link href="' . $GLOBALS['filesUrl'] . '/site.css" rel="stylesheet">
+            <script src="' . $GLOBALS['filesUrl'] . '/functions.js"></script>
         ';
         if(is_string($styleLink)){
-            echo '<link rel="stylesheet" type="text/css" href="' . $styleLink . '" />';
+            echo '<link rel="stylesheet" type="text/css" href="' . $styleLink . '">';
         }
         else{
             echo "<style>";
         }
     }
-    public static function end($scriptLink = false){
-        echo '</div>';
+    public static function end(string|false $scriptLink=false){
+        echo '</div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+        ';
         if(is_string($scriptLink)){
             echo '<script src="' . $scriptLink . '"></script>';
         }
@@ -343,7 +356,7 @@ class html{
             echo '<script>';
         }
     }
-    public static function end2($dontCloseScriptTag = false){
+    public static function end2(bool $dontCloseScriptTag=false){
         if($dontCloseScriptTag !== true){
             echo '</script>';
         }
@@ -352,13 +365,12 @@ class html{
             </html>
         ';
     }
-    public static function blankpage($msg){
+    public static function blankpage(string $msg){
         echo '
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="utf-8">
-            <meta http-equiv="X-UA-Compatible" content="IE=edge">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <link rel="shortcut icon" type="image/png" href="' . $GLOBALS['filesUrl'] . 'img/icon.png">
             <style>
@@ -371,15 +383,86 @@ class html{
         </html>
         ';
     }
-    public static function loadurl($url){
+    public static function loadurl(string $url){
         header("Location: " . $url);
         exit;
     }
-    public static function encodeInString($data):string{
+    public static function encodeInString(mixed $data):string{
         return rtrim(strtr(base64_encode(json_encode($data)), '+/', '-_'), '=');
     }
-    public static function decodeInString($data):mixed{
+    public static function decodeInString(mixed $data):mixed{
         return json_decode(base64_decode(str_pad(strtr($data, '-_', '+/'), strlen($data) % 4, '=', STR_PAD_RIGHT)),true);
+    }
+    public static function getNavButtons(string $headerId):array|false{
+        if(!preg_match("/^[a-zA-Z0-9-_.]+$/", $headerId)){
+            return false;
+        }
+
+        if(!is_file($GLOBALS['localDir'] . "\\headers\\" . $headerId . ".json")){
+            return false;
+        }
+
+        $data = website_json::readFile($GLOBALS['localDir'] . "\\headers\\" . $headerId . ".json");
+        if(!is_array($data) || !isset($data['webName']) || !is_string($data['webName']) || !isset($data['webNameLink']) || !is_string($data['webNameLink'])){
+            return false;
+        }
+
+        if(!isset($data['buttons']) || !is_array($data['buttons']) || !array_is_list($data['buttons'])){
+            return false;
+        }
+
+        foreach($data['buttons'] as $button){
+            if(!isset($button['name']) || !is_string($button['name'])){
+                return false;
+            }
+
+            if(isset($button['link'])){
+                if(!is_string($button['link'])){
+                    return false;
+                }
+            }
+            elseif(isset($button['dropdown'])){
+                if(!is_array($button['dropdown']) || !array_is_list($button['dropdown'])){
+                    return false;
+                }
+
+                foreach($button['dropdown'] as $dropdownItem){
+                    if(!isset($dropdownItem['name']) || !is_string($dropdownItem['name']) || !isset($dropdownItem['link']) || !is_string($dropdownItem['link'])){
+                        return false;
+                    }
+                }
+            }
+            else{
+                return false;
+            }
+        }
+
+        return $data;
+    }
+    public static function isThisCurrentLink(string $link):bool{
+        global $uri;
+
+        return (strtolower(self::normaliseUrl($uri)) === strtolower(self::normaliseUrl($link)));
+    }
+    public static function isThisCurrentLinkDropdown(array $dropdown):bool{
+        foreach($dropdown as $item){
+            if(isset($item['link']) && is_string($item['link'])){
+                if(self::isThisCurrentLink($item['link'])){
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+    public static function normaliseUrl(string $url):string{
+        $path = parse_url($url, PHP_URL_PATH);
+        // Normalize:
+        $path = rtrim($path, '/');           // Remove trailing slash
+        $path = '/' . ltrim($path, '/');     // Ensure leading slash
+        $path = preg_replace('#/+#', '/', $path); // Remove duplicate slashes
+
+        return $path;
     }
 }
 

@@ -1,0 +1,10 @@
+{
+    "webName": "Folder watcher",
+    "webNameLink": "\/watchfolder\/",
+    "buttons": [
+        {
+            "name": "Home",
+            "link": "\/"
+        }
+    ]
+}

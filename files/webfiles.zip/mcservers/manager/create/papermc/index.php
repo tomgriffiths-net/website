@@ -60,18 +60,18 @@ html::fullhead("mcservers");
 
 ?>
 
-<form method="post" action="../submit.php?type=<?php echo $type;?>">
+<form method="post" action="../submit.php?type=<?php echo $type;?>" style="max-width:300px;">
     <h4>Server Name:</h4>
-    <input class="account-form-input" type="text" value="<?php echo ucfirst($type) . ' Server ' . date("Y-m-d H:i:s");?>" name="name" required>
+    <input class="form-control" type="text" value="<?php echo ucfirst($type) . ' Server ' . date("Y-m-d H:i:s");?>" name="name" required>
     <br>
 
     <h4>Server Version:</h4>
-    <select onchange="ajax('index.php?type=<?php echo $type;?>&listBuilds=' + document.getElementById('versionSelector').value,'buildSelector',0);" id="versionSelector" name="version/version" class="account-form-input" required>
+    <select onchange="ajax('index.php?type=<?php echo $type;?>&listBuilds=' + document.getElementById('versionSelector').value,'buildSelector',0);" id="versionSelector" name="version/version" class="form-select" required>
     </select>
     <br>
 
     <h4>Select Build:</h4>
-    <select id="buildSelector" name="version/special_version" class="account-form-input" required>
+    <select id="buildSelector" name="version/special_version" class="form-select" required>
     </select>
     <br>
 
@@ -84,18 +84,17 @@ html::fullhead("mcservers");
     </script>
 
     <h4>Max Memory (MB):</h4>
-    <input class="account-form-input" min="128" type="number" value="4096" name="run/max_ram_mb" required>
+    <input class="form-control" min="128" type="number" value="4096" name="run/max_ram_mb" required>
     <br>
 
     <h4>Hide Console GUI:</h4>
-    <select name="run/nogui" class="account-form-input" required>
+    <select name="run/nogui" class="form-select" required>
         <option value="true">True</option>
         <option value="false">False</option>
     </select>
     <br>
 
-    <br>
-    <button id="formsubmit1" class="account-form-submit" type="submit" name="submit">Next</button>
+    <button id="formsubmit1" class="btn btn-success" type="submit" name="submit">Next</button>
 </form>
 
 <?php

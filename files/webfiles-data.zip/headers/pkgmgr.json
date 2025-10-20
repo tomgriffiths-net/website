@@ -1,0 +1,10 @@
+{
+    "webName": "Packages",
+    "webNameLink": "\/pkgmgr\/",
+    "buttons": [
+        {
+            "name": "Home",
+            "link": "\/"
+        }
+    ]
+}

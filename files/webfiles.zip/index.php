@@ -5,74 +5,46 @@ $packages = runfunction('pkgmgr::getLoadedPackages();');
 
 html::fullhead("main","Home", 'style.css');
 
-echo '<div style="width:100%; height:fit-content; padding:10px; background-color:#404040; display:flex;">';
-echo '
-    <div class="topsquare" onclick="window.location.href=\'/packages/\';">
-        <span class="topsqtitle">' . count($packages) . '</span>
-        <br>
-        <span>Packages installed</span>
-        <br>
-        <span style="color:#777;">(pkgmgr)</span>
-    </div>
-';
+echo '<div class="container" style="margin-top:30px;"><div class="row g-4">';
 
-if(isset($packages['mcservers'])){
-    $mcservers = runfunction('mcservers::allServers()');
-    if(is_array($mcservers)){
-        echo '
-            <div class="topsquare" onclick="window.location.href=\'/mcservers/list/\';">
-                <span class="topsqtitle">' . count($mcservers) . '</span>
-                <br>
-                <span>Minecraft servers</span>
-                <br>
-                <span style="color:#777;">(mcservers)</span>
-            </div>
-        ';
+$statCards = [
+    "pkgmgr-" . count($packages)           => "Packages installed",
+    "count(mcservers::allServers())"       => "Minecraft servers",
+    "conductor_server::numberOfJobs()"     => "Queued jobs",
+    "count(hyper_v::listVms())"            => "Virtual machines",
+    "watchfolder::getActiveWatcherCount()" => "Active watchers",
+    "website::numberOfSites()"             => "Websites"
+];
+
+foreach($statCards as $function => $label){
+    if(strpos($function, ":")){
+        $offset = strpos(substr($function,0,7), "(");
+        if(is_int($offset)){$offset++;}
+
+        $package = substr($function, $offset, strpos($function, ":") - $offset);
+        if(!isset($packages[$package])){
+            continue;
+        }
+        $value = (int) runfunction($function);
     }
-}
-if(isset($packages['conductor_server'])){
-    $jobs = runfunction('conductor_server::numberOfJobs()');
-    if(is_int($jobs)){
-        echo '
-            <div class="topsquare" onclick="window.location.href=\'/conductor_server/\';">
-                <span class="topsqtitle">' . $jobs . '</span>
-                <br>
-                <span>Queued jobs</span>
-                <br>
-                <span style="color:#777;">(conductor_server)</span>
-            </div>
-        ';
+    else{
+        $dashPos = strpos($function, "-");
+
+        $package = substr($function, 0, $dashPos);
+        $value = (int) substr($function, $dashPos +1);
     }
-}
-if(isset($packages['hyper_v'])){
-    $vms = runfunction('hyper_v::listVms()');
-    if(is_array($vms)){
-        echo '
-            <div class="topsquare" onclick="window.location.href=\'/hyper_v/\';">
-                <span class="topsqtitle">' . count($vms) . '</span>
-                <br>
-                <span>Virtual machines</span>
-                <br>
-                <span style="color:#777;">(hyper_v)</span>
+
+    echo '
+        <div class="col-12 col-md-4 col-lg-2" onclick="window.location.href=\'/' . $package . '/\'">
+            <div class="card-stat">
+                <div class="number">' . $value . '</div>
+                <div class="label">' . $label . '</div>
+                <div class="small opacity-50">(' . $package . ')</div>
             </div>
-        ';
-    }
-}
-if(isset($packages['website'])){
-    $sites = runfunction('website::numberOfSites()');
-    if(is_int($sites)){
-        echo '
-            <div class="topsquare" onclick="window.location.href=\'/website/\';">
-                <span class="topsqtitle">' . $sites . '</span>
-                <br>
-                <span>Websites</span>
-                <br>
-                <span style="color:#777;">(website)</span>
-            </div>
-        ';
-    }
+        </div>
+    ';
 }
 
-echo '</div>';
+echo '</div></div>';
 
 html::fullend();

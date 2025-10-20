@@ -138,9 +138,6 @@ body {
     flex-shrink: 0; /* Prevents shrinking */
     width: 150px; /* Set a fixed width for the button container */
 }
-#homepage_extraButtons > button{
-    margin-right: 10px;
-}
 #homepage_eventLog{
     margin-top: 5px;
 }

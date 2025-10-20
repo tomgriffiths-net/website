@@ -4,14 +4,14 @@
     "buttons": [
         {
             "name": "Packages",
-            "link": "\/packages\/"
+            "link": "\/pkgmgr\/"
         },
         {
             "name": "Admin",
             "dropdown": [
                 {
-                    "name": "Page Headers",
-                    "link": "\/admin\/editor\/header\/"
+                    "name": "Edit navbars",
+                    "link": "\/admin\/navbars\/list\/"
                 }
             ]
         }

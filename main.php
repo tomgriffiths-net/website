@@ -21,8 +21,8 @@ class website{
 
             if(is_int($hostPort) && is_string($hostIp)){
                 if(!network::ping($hostIp, $hostPort, 2)){
-                    mklog(1, 'Communicator is not running, starting automatically');
-                    cmd::newWindow('php\\php cli.php command "timetest website::hostSites();"');
+                    mklog(1, 'Website hoster is not running, starting automatically');
+                    cmd::newWindow('php\\php cli.php command "timetest website::hostSites();" no-loop true');
                 }
             }
             else{
@@ -726,7 +726,7 @@ class website{
         if(isset($siteData['communicator']) && $siteData['communicator']){
             if(!self::isCommunicatorOn()){
                 mklog(1, 'Communicator is not running, starting automatically');
-                cmd::newWindow('php\php cli.php command "communicator begin"');
+                cmd::newWindow('php\php cli.php command "communicator begin" no-loop true');
             }
         }
 
