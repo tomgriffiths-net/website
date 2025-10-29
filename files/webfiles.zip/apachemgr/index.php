@@ -1,7 +1,7 @@
 <?php
 require '../../localfiles/global.php';
 
-html::fullhead("hyper_v", "Hyper-V manager");
+html::fullhead("apachemgr", "Apache server manager");
 
 
 

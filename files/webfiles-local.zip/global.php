@@ -296,10 +296,16 @@ class html{
                             }
                             echo '
                         </ul>
-                        <form class="d-flex" role="search">
-                            <input class="form-control me-2" type="search" style="min-width:300px;" placeholder="Search" aria-label="Search"/>
-                            <button class="btn btn-outline-success" type="submit">Search</button>
-                        </form>
+                        ';
+                        if(!html::isThisCurrentLink("/search")){
+                            echo '
+                                <form class="d-flex" role="search" action="/search/" method="get">
+                                    <input class="form-control me-2" type="search" name="q" style="min-width:300px;" placeholder="Search" aria-label="Search"/>
+                                    <button class="btn btn-outline-success" type="submit">Search</button>
+                                </form>
+                            ';
+                        }
+                        echo '
                         </div>
                     </div>
                 </nav>

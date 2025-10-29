@@ -5,15 +5,16 @@ $packages = runfunction('pkgmgr::getLoadedPackages();');
 
 html::fullhead("main","Home", 'style.css');
 
-echo '<div class="container" style="margin-top:30px;"><div class="row g-4">';
+echo '<div class="container" style="margin-top:30px;"><div class="row g-4 justify-content-center">';
 
 $statCards = [
-    "pkgmgr-" . count($packages)           => "Packages installed",
-    "count(mcservers::allServers())"       => "Minecraft servers",
-    "conductor_server::numberOfJobs()"     => "Queued jobs",
+    "count(apachemgr::listServers())"      => "Apache servers",
+    "conductor_server::numberOfJobs()"     => "Pending jobs",
     "count(hyper_v::listVms())"            => "Virtual machines",
+    "count(mcservers::allServers())"       => "Minecraft servers",
     "watchfolder::getActiveWatcherCount()" => "Active watchers",
-    "website::numberOfSites()"             => "Websites"
+    "website::numberOfSites()"             => "Websites",
+    "pkgmgr-" . count($packages)           => "Packages installed"
 ];
 
 foreach($statCards as $function => $label){

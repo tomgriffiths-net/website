@@ -58,7 +58,7 @@ foreach([
                         }
                     }
                     else{
-                        echo 'grey';
+                        echo '#555';
                     }
                     echo ');">
 

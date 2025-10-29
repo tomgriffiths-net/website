@@ -1,4 +1,4 @@
-function ajax(url, divid, reptm){
+function ajax(url, divid, reptm=0){
     const div = document.getElementById(divid);
 
     const xhttp = new XMLHttpRequest();
@@ -6,14 +6,8 @@ function ajax(url, divid, reptm){
         div.innerHTML = this.responseText;
 
         const scripts = div.getElementsByTagName('script');
-        for (let script of scripts) {
-            const scriptTag = document.createElement('script');
-            if (script.src) {
-                scriptTag.src = script.src;
-            } else {
-                scriptTag.text = script.textContent;
-            }
-            document.head.appendChild(scriptTag).parentNode.removeChild(scriptTag);
+        for(let script of scripts){
+            eval(script.textContent);
         }
     }
 

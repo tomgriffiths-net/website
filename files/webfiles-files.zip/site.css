@@ -3,15 +3,15 @@ body {
 }
 
 .loadingAnimation{
-    border: 16px solid #f3f3f3;
-    border-top: 16px solid #3498db;
+    border: 9px solid #6c6c6c;
+    border-top: 9px solid #2e9fea;
     border-radius: 50%;
-    width: 120px;
-    height: 120px;
-    animation: loadingAnimationSpin 1.5s linear infinite;
+    width: 50px;
+    height: 50px;
+    animation: loadingAnimationSpin 1s linear infinite;
     position: relative;
-    top: calc(50% - 60px);
-    left: calc(50% - 60px);
+    top: calc(50% - 25px);
+    left: calc(50% - 25px);
     transform: translate(-50%, -50%);
 }
 
