@@ -1,33 +1,17 @@
 <?php
 class website{
+    private static $apacheProcs = [];
+    private static $logCollectors = [];
+    private static $mysqls = [];
     public static function init():void{
         $defaultSettings = [
-            'hosterPort' => 7000,
-            'hosterIP'   => '127.0.0.1',
             'autoStartSites'  => [],
-            'autoStartHoster' => true,
-
             'communicatorPort' => 8080,
             'communicatorIP'   => '127.0.0.1'
         ];
 
         foreach($defaultSettings as $settingName => $settingValue){
             settings::set($settingName, $settingValue, false);
-        }
-
-        if(settings::read('autoStartHoster') && !is_string($GLOBALS['arguments']['command'])){
-            $hostPort = settings::read('hosterPort');
-            $hostIp = settings::read('hosterIP');
-
-            if(is_int($hostPort) && is_string($hostIp)){
-                if(!network::ping($hostIp, $hostPort, 2)){
-                    mklog(1, 'Website hoster is not running, starting automatically');
-                    cmd::newWindow('php\\php cli.php command "timetest website::hostSites();" no-loop true');
-                }
-            }
-            else{
-                mklog(2, 'Failed to read hosterPort or hosterIP setting');
-            }
         }
     }
     public static function command($line):void{
@@ -247,9 +231,8 @@ class website{
             return false;
         }
 
-        if(self::isCommunicatorOn()){
-            echo "\n  If any other packages have been updated, communicator will have to be restarted.\n\n";
-        }
+
+        echo "\n  Communicator may have to be restarted if it contains outdated code.\n\n";
 
         mklog(1, 'Copying site files for site ' . $siteId);
         cmd::run('robocopy packages\\website\\files\\webfiles.zip "' . $settings['path'] . '\\website" /e /v /mir');
@@ -269,247 +252,298 @@ class website{
         return settings::unset('sites/' . $siteId);
     }
     //Hoster
-    public static function hostSites():void{
-        exec('title Websites host');
-        cli_formatter::clear();
-        echo "Website hoster process...\n";
-
-        $hostPort = settings::read('hosterPort');
-        $hostIp = settings::read('hosterIP');
-
-        if(!is_int($hostPort) || !is_string($hostIp)){
-            mklog(2,'Failed to read hosterPort or hosterIP setting');
-            return;
+    public static function hoster_startAutostarts():bool{
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        if(!isset($backtrace[2]['class']) || $backtrace[2]['class'] !== "communicator_server"){
+            mklog(1, 'You cannot call the hoster_startAutostarts outside of communicator_server');
+            return false;
         }
-
-        $socketServer = communicator::createServer($hostIp, $hostPort, 5, $socketErrorCode, $socketErrorString);
-        if(!$socketServer){
-            mklog(2, 'Failed to set up communications: ' . $socketErrorString);
-        }
-
-        $apacheProcs = [];
-        $logCollectors = [];
-        $mysqls = [];
-        $break = false;
 
         $autoStarts = settings::read('autoStartSites');
-        if(is_array($autoStarts)){
-            foreach($autoStarts as $siteId){
-                if(is_int($siteId)){
-                    $siteData = settings::read('sites/' . $siteId);
-                    if(is_array($siteData)){
-                        $autoStartResponse = [];
-                        if(!self::hoster_startSite($siteId, $siteData, $autoStartResponse, $apacheProcs, $mysqls, $logCollectors)){
-                            mklog(2, 'Failed to automatically start site ' . $siteId);
-                        }
-                        if(isset($autoStartResponse['error']) && !empty($autoStartResponse['error'])){
-                            mklog(2, 'Autostarting site ' . $siteId . ' gave an error: ' . $autoStartResponse['error']);
-                        }
+        if(!is_array($autoStarts)){
+            mklog(2, 'Failed to read autostart settings');
+            return false;
+        }
+
+        foreach($autoStarts as $siteId){
+            if(is_int($siteId)){
+                $siteData = settings::read('sites/' . $siteId);
+                if(is_array($siteData)){
+                    $autoStartResponse = [];
+                    if(!self::hoster_startSite($siteId, $siteData, $autoStartResponse, self::$apacheProcs, self::$mysqls, self::$logCollectors)){
+                        mklog(2, 'Failed to automatically start site ' . $siteId);
+                    }
+                    if(isset($autoStartResponse['error']) && !empty($autoStartResponse['error'])){
+                        mklog(2, 'Autostarting site ' . $siteId . ' gave an error: ' . $autoStartResponse['error']);
                     }
                 }
             }
         }
 
-        while(true){
-            $clientSocket = communicator::acceptConnection($socketServer, 5);
-            if($clientSocket){
-                $response = [
-                    'success' => false,
-                    'error' => '',
-                    'data' => [],
-                    //'servers' => []
-                ];
-                $message = communicator::receiveData($clientSocket);
-                if(!is_array($message) || !isset($message['action']) || !is_string($message['action']) || !isset($message['sites']) || !is_array($message['sites']) || !array_is_list($message['sites']) || !isset($message['servers']) || !is_array($message['servers']) || !array_is_list($message['servers'])){
-                    mklog(1, 'Received unexpected message, ignoring' . ($message === false ? ' (likely a ping)' : ''));
-                    communicator::close($clientSocket);
-                    continue;
+        return true;
+    }
+    public static function hoster_checkStuff():void{
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        if(!isset($backtrace[2]['class']) || $backtrace[2]['class'] !== "communicator_server"){
+            mklog(1, 'You cannot call the hoster_checkStuff outside of communicator_server');
+            return;
+        }
+
+        foreach(self::$apacheProcs as $apacheIndex => $process){
+            $procinfo = proc_get_status($process);
+            if(!$procinfo['running']){
+                mklog(2, 'Process for apache server ' . $apacheIndex . ' has exited unexpectedly with code ' . $procinfo['exitcode']);
+                unset(self::$apacheProcs[$apacheIndex]);
+            }
+        }
+
+        self::hoster_logCollectors(self::$logCollectors);
+    }
+    public static function hoster_run(string $action, array $sites, array $servers):array{
+        $response = [
+            'success' => false,
+            'error' => '',
+            'data' => [],
+        ];
+
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        if(!isset($backtrace[2]['class']) || $backtrace[2]['class'] !== "communicator_server"){
+            mklog(1, 'You cannot call the hoster_run outside of communicator_server');
+            $response['error'] = 'You cannot call the hoster_run outside of communicator_server';
+            return $response;
+        }
+
+        if(!array_is_list($sites) || !array_is_list($servers)){
+            mklog(1, 'Received unexpected message');
+            return $response;
+        }
+
+        $sitesList = [];
+        foreach($sites as $siteId){
+            if(!is_int($siteId)){
+                mklog(2, 'Received a non integer site number');
+                $response['error'] = 'Found a non integer site number';
+                return $response;
+            }
+
+            $siteData = settings::read('sites/' . $siteId);
+            if(!is_array($siteData)){
+                mklog(2, 'Could not find site ' . $siteId);
+                $response['error'] = 'Could not find site ' . $siteId;
+                return $response;
+            }
+
+            $sitesList[$siteId] = $siteData;
+        }
+
+        $serversList = [];
+        if(!empty($servers)){
+            if(empty($sitesList)){
+                mklog(2, 'No sites specified for servers');
+                $response['error'] = 'No sites specified for servers';
+                return $response;
+            }
+
+            foreach($servers as $server){
+                if(!is_int($server)){
+                    mklog(2, 'Received a non integer server number');
+                    $response['error'] = 'Found a non integer server number';
+                    return $response;
                 }
 
-                $sites = [];
-                foreach($message['sites'] as $siteId){
-                    if(!is_int($siteId)){
-                        mklog(2, 'Received a non integer site number');
-                        $response['error'] = 'Found a non integer site number';
-                        goto respond;
-                    }
-
-                    $siteData = settings::read('sites/' . $siteId);
-                    if(!is_array($siteData)){
-                        mklog(2, 'Could not find site ' . $siteId);
-                        $response['error'] = 'Could not find site ' . $siteId;
-                        goto respond;
-                    }
-
-                    $sites[$siteId] = $siteData;
-                }
-
-                $serversList = [];
-                if(!empty($message['servers'])){
-                    if(empty($sites)){
-                        mklog(2, 'No sites specified for servers');
-                        $response['error'] = 'No sites specified for servers';
-                        goto respond;
-                    }
-
-                    foreach($message['servers'] as $server){
-                        if(!is_int($server)){
-                            mklog(2, 'Received a non integer server number');
-                            $response['error'] = 'Found a non integer server number';
-                            goto respond;
-                        }
-
-                        if($server < 0){
-                            foreach($sites as $siteId => $siteData){
-                                if(!$siteData['logsCollector']){
-                                    mklog(2, 'Site ' . $siteId . ' does not have logsCollector enabled');
-                                    $response['error'] = 'Site ' . $siteId . ' does not have logsCollector enabled';
-                                    goto respond;
-                                }
-                            }
-                        }
-                        else{
-                            foreach($sites as $siteId => $siteData){
-                                if(!isset($siteData['servers'][$server])){
-                                    mklog(2, 'Could not find server ' . $server . ' in site ' . $siteId);
-                                    $response['error'] = 'Could not find server ' . $server . ' in site ' . $siteId;
-                                    goto respond;
-                                }
-                            }
-                        }
-
-                        $serversList[] = $server;
-                    }
-                }
-
-                if($message['action'] === "startSite"){
-                    foreach($sites as $siteId => $siteData){
-                        if(!self::hoster_startSite($siteId, $siteData, $response, $apacheProcs, $mysqls, $logCollectors)){
-                            goto respond;
-                        }
-                    }
-                }
-                elseif($message['action'] === "stopSite"){
-                    foreach($sites as $siteId => $siteData){
-                        foreach($siteData['servers'] as $server){
-                            if(!self::hoster_stopServer($server, $response, $apacheProcs, $mysqls)){
-                                goto respond;
-                            }
-                        }
-                        if($siteData['logsCollector']){
-                            self::hoster_disableLogCollector($siteId, $logCollectors);
-                        }
-                    }
-                }
-                elseif($message['action'] === "exit"){
-                    foreach($apacheProcs as $apacheId => $apacheProc){
-                        if(!self::hoster_stopApacheServer($apacheId, $response, $apacheProcs)){
-                            goto respond;
-                        }
-                    }
-
-                    foreach($mysqls as $mysqlId => $mysqlRunning){
-                        if(!self::hoster_stopMysqlServer($mysqlId, $response, $mysqls)){
-                            goto respond;
-                        }
-                    }
-
-                    foreach($logCollectors as $siteId => $logCollector){
-                        self::hoster_disableLogCollector($siteId, $logCollectors);
-                    }
-
-                    $break = true;
-                }
-                elseif($message['action'] === "getRunningServers"){
-                    $response['success'] = true;
-                    $response['data']['apache'] = [];
-                    $response['data']['mysql'] = [];
-                    $response['data']['logCollectors'] = [];
-
-                    foreach($apacheProcs as $apacheIndex => $process){
-                        $response['data']['apache'][] = $apacheIndex;
-                    }
-                    foreach($mysqls as $mysqlIndex => $mysqlRunning){
-                        $response['data']['mysql'][] = $mysqlIndex;
-                    }
-                    foreach($logCollectors as $siteId => $logCollector){
-                        $response['data']['logCollectors'][] = $siteId;
-                    }
-                }
-                elseif($message['action'] === "startServer"){
-                    foreach($sites as $siteId => $siteData){
-                        foreach($serversList as $server){
-                            if($server < 0){
-                                if(self::hoster_enableLogCollector($siteId, $siteData, $logCollectors)){
-                                    $response['success'] = true;
-                                }
-                                else{
-                                    $response['error'] = 'LogCollector is already running for site ' . $siteId;
-                                    goto respond;
-                                }
-                            }
-                            else{
-                                if(!self::hoster_startServer($siteData['servers'][$server], $response, $apacheProcs, $mysqls)){
-                                    goto respond;
-                                }
-                            }
-                        }
-                    }
-                }
-                elseif($message['action'] === "stopServer"){
-                    foreach($sites as $siteId => $siteData){
-                        foreach($serversList as $server){
-                            if($server < 0){
-                                if(self::hoster_disableLogCollector($siteId, $logCollectors)){
-                                    $response['success'] = true;
-                                }
-                                else{
-                                    $response['error'] = 'LogCollector was not running for site ' . $siteId;
-                                    goto respond;
-                                }
-                            }
-                            else{
-                                if(!self::hoster_stopServer($siteData['servers'][$server], $response, $apacheProcs, $mysqls)){
-                                    goto respond;
-                                }
-                            }
+                if($server < 0){
+                    foreach($sitesList as $siteId => $siteData){
+                        if(!$siteData['logsCollector']){
+                            mklog(2, 'Site ' . $siteId . ' does not have logsCollector enabled');
+                            $response['error'] = 'Site ' . $siteId . ' does not have logsCollector enabled';
+                            return $response;
                         }
                     }
                 }
                 else{
-                    mklog(2,'Received an unknown command');
-                    $response['error'] = 'Unknown command';
+                    foreach($sitesList as $siteId => $siteData){
+                        if(!isset($siteData['servers'][$server])){
+                            mklog(2, 'Could not find server ' . $server . ' in site ' . $siteId);
+                            $response['error'] = 'Could not find server ' . $server . ' in site ' . $siteId;
+                            return $response;
+                        }
+                    }
                 }
 
-                respond:
-
-                if(!communicator::sendData($clientSocket, $response)){
-                    mklog(2, 'Failed to send response');
-                }
-
-                communicator::close($clientSocket);
-            }
-
-            foreach($apacheProcs as $apacheIndex => $process){
-                $procinfo = proc_get_status($process);
-                if(!$procinfo['running']){
-                    mklog(2, 'Process for apache server ' . $apacheIndex . ' has exited unexpectedly with code ' . $procinfo['exitcode']);
-                    unset($apacheProcs[$apacheIndex]);
-                }
-            }
-
-            self::hoster_logCollectors($logCollectors);
-
-            if($break){
-                break;
+                $serversList[] = $server;
             }
         }
 
-        mklog(1, 'Closing website hoster');
+        if($action === "startSite"){
+            foreach($sitesList as $siteId => $siteData){
+                if(!self::hoster_startSite($siteId, $siteData, $response, self::$apacheProcs, self::$mysqls, self::$logCollectors)){
+                    return $response;
+                }
+            }
+        }
+        elseif($action === "stopSite"){
+            foreach($sitesList as $siteId => $siteData){
+                foreach($siteData['servers'] as $server){
+                    if(!self::hoster_stopServer($server, $response, self::$apacheProcs, self::$mysqls)){
+                        return $response;
+                    }
+                }
+                if($siteData['logsCollector']){
+                    self::hoster_disableLogCollector($siteId, self::$logCollectors);
+                }
+            }
+        }
+        elseif($action === "exit"){
+            foreach(self::$apacheProcs as $apacheId => $apacheProc){
+                if(!self::hoster_stopApacheServer($apacheId, $response, self::$apacheProcs)){
+                    return $response;
+                }
+            }
 
-        communicator::close($socketServer);
+            foreach(self::$mysqls as $mysqlId => $mysqlRunning){
+                if(!self::hoster_stopMysqlServer($mysqlId, $response, self::$mysqls)){
+                    return $response;
+                }
+            }
 
-        return;
+            foreach(self::$logCollectors as $siteId => $logCollector){
+                self::hoster_disableLogCollector($siteId, self::$logCollectors);
+            }
+        }
+        elseif($action === "getRunningServers" || $action === "getStatuses"){
+            $response['success'] = true;
+            $response['data']['apache'] = [];
+            $response['data']['mysql'] = [];
+            $response['data']['logCollectors'] = [];
+
+            foreach(self::$apacheProcs as $apacheIndex => $process){
+                $response['data']['apache'][] = $apacheIndex;
+            }
+            foreach(self::$mysqls as $mysqlIndex => $mysqlRunning){
+                $response['data']['mysql'][] = $mysqlIndex;
+            }
+            foreach(self::$logCollectors as $siteId => $logCollector){
+                $response['data']['logCollectors'][] = $siteId;
+            }
+
+            if($action === "getStatuses"){
+                $statuses = self::hoster_turnRunningServersIntoSiteStates($response);
+                if(!is_array($statuses)){
+                    $response['success'] = false;
+                    $response['error'] = "Failed to turn running data into statuses";
+                    $response['data'] = [];
+                    return $response;
+                }
+
+                $response['data'] = $statuses;
+            }
+        }
+        elseif($action === "startServer"){
+            foreach($sitesList as $siteId => $siteData){
+                foreach($serversList as $server){
+                    if($server < 0){
+                        if(self::hoster_enableLogCollector($siteId, $siteData, self::$logCollectors)){
+                            $response['success'] = true;
+                        }
+                        else{
+                            $response['error'] = 'LogCollector is already running for site ' . $siteId;
+                            return $response;
+                        }
+                    }
+                    else{
+                        if(!self::hoster_startServer($siteData['servers'][$server], $response, self::$apacheProcs, self::$mysqls)){
+                            return $response;
+                        }
+                    }
+                }
+            }
+        }
+        elseif($action === "stopServer"){
+            foreach($sitesList as $siteId => $siteData){
+                foreach($serversList as $server){
+                    if($server < 0){
+                        if(self::hoster_disableLogCollector($siteId, self::$logCollectors)){
+                            $response['success'] = true;
+                        }
+                        else{
+                            $response['error'] = 'LogCollector was not running for site ' . $siteId;
+                            return $response;
+                        }
+                    }
+                    else{
+                        if(!self::hoster_stopServer($siteData['servers'][$server], $response, self::$apacheProcs, self::$mysqls)){
+                            return $response;
+                        }
+                    }
+                }
+            }
+        }
+        else{
+            mklog(2,'Received an unknown command');
+            $response['error'] = 'Unknown command';
+        }
+
+        return $response;
+    }
+    private static function hoster_turnRunningServersIntoSiteStates(array $result):array|false{
+        $sites = settings::read('sites');
+        if(!is_array($sites)){
+            return false;
+        }
+        if(empty($sites)){
+            return [];
+        }
+
+        if(!isset($result['data']) || !isset($result['data']['apache']) || !isset($result['data']['mysql']) || !isset($result['data']['logCollectors'])){
+            return false;
+        }
+
+        $runningServers = [];
+        $siteStates = [];
+        foreach($sites as $siteId => $siteData){
+            if(!isset($siteData['servers']) || !is_array($siteData['servers'])){
+                continue;
+            }
+
+            if($siteData['logsCollector']){
+                if(in_array($siteId, $result['data']['logCollectors'])){
+                    $runningServers[$siteId][] = -1;
+                    self::hoster_siteThingOnOff($siteId, true, $siteStates);
+                }
+                else{
+                    self::hoster_siteThingOnOff($siteId, false, $siteStates);
+                }
+            }
+
+            foreach($siteData['servers'] as $serverNumber => $server){
+                foreach(['apache','mysql'] as $thing){
+                    if($server['type'] === $thing){
+                        if(in_array($server[$thing.'Index'], $result['data'][$thing])){
+                            $runningServers[$siteId][] = $serverNumber;
+                            self::hoster_siteThingOnOff($siteId, true, $siteStates);
+                        }
+                        else{
+                            self::hoster_siteThingOnOff($siteId, false, $siteStates);
+                        }
+                    }
+                }
+            }
+        }
+
+        return [
+            'servers'=>$runningServers,
+            'sites'=>$siteStates
+        ];
+    }
+    private static function hoster_siteThingOnOff(int $siteId, bool $on, array &$siteStates):void{
+        if(!isset($siteStates[$siteId])){
+            $siteStates[$siteId] = ($on ? "on" : "off");
+        }
+        else{
+            if($siteStates[$siteId] === "off" && $on || $siteStates[$siteId] === "on" && !$on){
+                $siteStates[$siteId] = "onish";
+            }
+        }
     }
     private static function hoster_startApacheServer(int $apacheId, array &$response, array &$apacheProcs):bool{
         if(isset($apacheProcs[$apacheId])){
@@ -723,13 +757,6 @@ class website{
         
         $return = true;
 
-        if(isset($siteData['communicator']) && $siteData['communicator']){
-            if(!self::isCommunicatorOn()){
-                mklog(1, 'Communicator is not running, starting automatically');
-                cmd::newWindow('php\php cli.php command "communicator begin" no-loop true');
-            }
-        }
-
         foreach($siteData['servers'] as $server){
             if(!self::hoster_startServer($server, $response, $apacheProcs, $mysqls)){
                 $return = false;
@@ -745,7 +772,7 @@ class website{
 
         return $return;
     }
-    public static function sendCommand(string $command, array $sites=[], array $servers=[]):array|false{
+    public static function sendCommand(string $action, array $sites=[], array $servers=[]):array|false{
         foreach(['sites','servers'] as $thing){
             if(!array_is_list($$thing)){
                 mklog(2, 'Non list site or server list passed');
@@ -759,32 +786,20 @@ class website{
             }
         }
 
-        $hosterPort = settings::read('hosterPort');
-        $hosterIp = settings::read('hosterIP');
-        if(!is_int($hosterPort) || !is_string($hosterIp)){
+        $communicatorIp = settings::read('communicatorIP');
+        $communicatorPort = settings::read('communicatorPort');
+        if(!is_string($communicatorIp) || !is_int($communicatorPort)){
             mklog(2, 'Failed to get hoster connection info');
             return false;
         }
 
-        $stream = communicator::connect($hosterIp, $hosterPort, 5, $errorCode, $errorString);
-        if(!$stream){
-            mklog(2, 'Failed to connect to site hoster');
-            return false;
-        }
+        $action = base64_encode(serialize($action));
+        $sites = base64_encode(serialize($sites));
+        $servers = base64_encode(serialize($servers));
 
-        if(!communicator::sendData($stream, ['action'=>$command, 'sites'=>$sites, 'servers'=>$servers])){
-            mklog(2, 'Failed to send data to site hoster');
-            return false;
-        }
+        $response = communicator_client::runfunction('website::hoster_run(unserialize(base64_decode(\''.$action.'\')), unserialize(base64_decode(\''.$sites.'\')), unserialize(base64_decode(\''.$servers.'\')))', $communicatorIp, $communicatorPort);
 
-        $response = communicator::receiveData($stream);
         if(!is_array($response)){
-            mklog(2, 'Did not receive expected data');
-            return false;
-        }
-
-        if(!isset($response['success']) || !is_bool($response['success'])){
-            mklog(2, 'Received unexpected data');
             return false;
         }
 
@@ -810,88 +825,32 @@ class website{
         return true;
     }
     //Queries
-    public static function isCommunicatorOn():bool{
-        $communicatorIp = settings::read('communicatorIP');
-        $communicatorPort = settings::read('communicatorPort');
-        if(is_string($communicatorIp) && is_int($communicatorPort)){
-            return network::ping($communicatorIp, $communicatorPort, 1);
-        }
-        else{
-            mklog(2, 'Failed to get communicator connection info');
-            return false;
-        }
-    }
     public static function listSites():array|false{
         return settings::read('sites');
     }
     public static function numberOfSites():int|false{
-        $sites = settings::read('sites');
+        $sites = self::listSites();
         if(!is_array($sites)){
             return false;
         }
         return count($sites);
     }
-    //Web helpers
-    public static function web_getRunningSites():array|false{
-        $sites = settings::read('sites');
-        if(!is_array($sites)){
-            return false;
-        }
-
-        if(empty($sites)){
-            return [];
-        }
-
-        $result = self::sendCommand('getRunningServers');
-        if(!is_array($result) || !isset($result['data']) || !isset($result['data']['apache']) || !isset($result['data']['mysql']) || !isset($result['data']['logCollectors'])){
-            return false;
-        }
-
-        $runningServers = [];
-        $siteStates = [];
-        foreach($sites as $siteId => $siteData){
-            if(!isset($siteData['servers']) || !is_array($siteData['servers'])){
-                continue;
-            }
-
-            if($siteData['logsCollector']){
-                if(in_array($siteId, $result['data']['logCollectors'])){
-                    $runningServers[$siteId][] = -1;
-                    self::web_getRunningSites_siteThingOnOff($siteId, true, $siteStates);
-                }
-                else{
-                    self::web_getRunningSites_siteThingOnOff($siteId, false, $siteStates);
-                }
-            }
-
-            foreach($siteData['servers'] as $serverNumber => $server){
-                foreach(['apache','mysql'] as $thing){
-                    if($server['type'] === $thing){
-                        if(in_array($server[$thing.'Index'], $result['data'][$thing])){
-                            $runningServers[$siteId][] = $serverNumber;
-                            self::web_getRunningSites_siteThingOnOff($siteId, true, $siteStates);
-                        }
-                        else{
-                            self::web_getRunningSites_siteThingOnOff($siteId, false, $siteStates);
-                        }
-                    }
-                }
-            }
-        }
-
+    //Communicator things
+    public static function communicatorServerThingsToDo():array{
         return [
-            'servers'=>$runningServers,
-            'sites'=>$siteStates
+            [
+                "type" => "startup",
+                "function" => 'website::hoster_startAutostarts()'
+            ],
+            [
+                "type" => "repeat",
+                "interval" => 5,
+                "function" => 'website::hoster_checkStuff()'
+            ],
+            [
+                "type" => "shutdown",
+                "function" => 'website::hoster_run("exit", [], [])'
+            ],
         ];
-    }
-    private static function web_getRunningSites_siteThingOnOff(int $siteId, bool $on, array &$siteStates):void{
-        if(!isset($siteStates[$siteId])){
-            $siteStates[$siteId] = ($on ? "on" : "off");
-        }
-        else{
-            if($siteStates[$siteId] === "off" && $on || $siteStates[$siteId] === "on" && !$on){
-                $siteStates[$siteId] = "onish";
-            }
-        }
     }
 }

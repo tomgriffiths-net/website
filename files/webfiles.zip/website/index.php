@@ -2,12 +2,13 @@
 require '../../localfiles/global.php';
 
 if(isset($_GET['getRunnings'])){
-    $runningSites = runfunction('website::web_getRunningSites();');
+    $runningSites = website_website::sendCommand("getStatuses");
+    
     if(!is_array($runningSites)){
-        $runningSites = ['servers'=>[],'sites'=>[]];
+        echo json_encode(['servers'=>[],'sites'=>[]]);
     }
 
-    echo json_encode($runningSites);
+    echo json_encode($runningSites['data']);
 
     exit;
 }
@@ -16,13 +17,13 @@ elseif(isset($_GET['command'])){
         if(!isset($_GET['site'])){
             exit;
         }
-        $result = runfunction('website::sendCommand("' . $_GET['command'] . '", [' . $_GET['site'] . ']);');
+        $result = website_website::sendCommand($_GET['command'], [intval($_GET['site'])]);
     }
     elseif($_GET['command'] === "startServer" || $_GET['command'] === "stopServer"){
         if(!isset($_GET['site']) || !isset($_GET['server'])){
             exit;
         }
-        $result = runfunction('website::sendCommand("' . $_GET['command'] . '", [' . $_GET['site'] . '], [' . $_GET['server'] . ']);');
+        $result = website_website::sendCommand($_GET['command'], [intval($_GET['site'])], [intval($_GET['server'])]);
     }
     else{
         exit;
@@ -90,7 +91,7 @@ foreach($sites as $siteId => $siteData){
 
 echo '
     <br>
-    <h6>Communicator and website hoster are both running for this page to be visible.</h6>
+    <h6>Communicator is running for this page to be visible.</h6>
 ';
 
 html::fullend('script.js');

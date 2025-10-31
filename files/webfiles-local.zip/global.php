@@ -704,3 +704,45 @@ class website_mcservers{
         return $return;
     }
 }
+class website_website{
+    public static function sendCommand(string $action, array $sites=[], array $servers=[]):array|false{
+        foreach(['sites','servers'] as $thing){
+            if(!array_is_list($$thing)){
+                return false;
+            }
+            foreach($$thing as $eeee){
+                if(!is_int($eeee)){
+                    return false;
+                }
+            }
+        }
+
+        $action = base64_encode(serialize($action));
+        $sites = base64_encode(serialize($sites));
+        $servers = base64_encode(serialize($servers));
+
+        $response = website_communicator_client::runfunction('website::hoster_run(unserialize(base64_decode(\''.$action.'\')), unserialize(base64_decode(\''.$sites.'\')), unserialize(base64_decode(\''.$servers.'\')))');
+
+        if(!is_array($response)){
+            return false;
+        }
+
+        return $response;
+    }
+    public static function sendCommandBool(string $command, array $sites=[], array $servers=[]):bool{
+        $response = self::sendCommand($command, $sites, $servers);
+        if(!is_array($response)){
+            return false;
+        }
+
+        if(!$response['success']){
+            if(!isset($response['error']) || empty($response['error'])){
+                return false;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+}

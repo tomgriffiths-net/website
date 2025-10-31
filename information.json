@@ -1,15 +1,14 @@
 {
     "id_name": "website",
-    "version": 30,
+    "version": 31,
     "author": "tom",
-    "name": "Configurable Website (Dev)",
+    "name": "Website (Dev)",
     "description": "",
     "dependencies": {
         "apachemgr": 4,
-        "character_sender": 1,
-        "communicator": 5,
+        "communicator": 6,
         "communicator_client": 5,
-        "is_admin": 1,
+        "communicator_server": 11,
         "mysql": 1,
         "network": 1,
         "settings": 2
