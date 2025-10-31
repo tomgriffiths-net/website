@@ -252,6 +252,58 @@ class website{
         return settings::unset('sites/' . $siteId);
     }
     //Hoster
+    public static function sendCommand(string $action, array $sites=[], array $servers=[]):array|false{
+        foreach(['sites','servers'] as $thing){
+            if(!array_is_list($$thing)){
+                mklog(2, 'Non list site or server list passed');
+                return false;
+            }
+            foreach($$thing as $eeee){
+                if(!is_int($eeee)){
+                    mklog(2, 'Non integer site or server id passed');
+                    return false;
+                }
+            }
+        }
+
+        $communicatorIp = settings::read('communicatorIP');
+        $communicatorPort = settings::read('communicatorPort');
+        if(!is_string($communicatorIp) || !is_int($communicatorPort)){
+            mklog(2, 'Failed to get hoster connection info');
+            return false;
+        }
+
+        $action = base64_encode(serialize($action));
+        $sites = base64_encode(serialize($sites));
+        $servers = base64_encode(serialize($servers));
+
+        $response = communicator_client::runfunction('website::hoster_run(unserialize(base64_decode(\''.$action.'\')), unserialize(base64_decode(\''.$sites.'\')), unserialize(base64_decode(\''.$servers.'\')))', $communicatorIp, $communicatorPort);
+
+        if(!is_array($response)){
+            return false;
+        }
+
+        return $response;
+    }
+    public static function sendCommandBool(string $command, array $sites=[], array $servers=[]):bool{
+        $response = self::sendCommand($command, $sites, $servers);
+        if(!is_array($response)){
+            mklog(2, 'Failed to send command to site hoster');
+            return false;
+        }
+
+        if(!$response['success']){
+            if(!isset($response['error']) || empty($response['error'])){
+                mklog(2, 'Generic failure');
+                return false;
+            }
+
+            mklog(2, 'Failed with error: ' . $response['error']);
+            return false;
+        }
+
+        return true;
+    }
     public static function hoster_startAutostarts():bool{
         $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
         if(!isset($backtrace[2]['class']) || $backtrace[2]['class'] !== "communicator_server"){
@@ -771,58 +823,6 @@ class website{
         }
 
         return $return;
-    }
-    public static function sendCommand(string $action, array $sites=[], array $servers=[]):array|false{
-        foreach(['sites','servers'] as $thing){
-            if(!array_is_list($$thing)){
-                mklog(2, 'Non list site or server list passed');
-                return false;
-            }
-            foreach($$thing as $eeee){
-                if(!is_int($eeee)){
-                    mklog(2, 'Non integer site or server id passed');
-                    return false;
-                }
-            }
-        }
-
-        $communicatorIp = settings::read('communicatorIP');
-        $communicatorPort = settings::read('communicatorPort');
-        if(!is_string($communicatorIp) || !is_int($communicatorPort)){
-            mklog(2, 'Failed to get hoster connection info');
-            return false;
-        }
-
-        $action = base64_encode(serialize($action));
-        $sites = base64_encode(serialize($sites));
-        $servers = base64_encode(serialize($servers));
-
-        $response = communicator_client::runfunction('website::hoster_run(unserialize(base64_decode(\''.$action.'\')), unserialize(base64_decode(\''.$sites.'\')), unserialize(base64_decode(\''.$servers.'\')))', $communicatorIp, $communicatorPort);
-
-        if(!is_array($response)){
-            return false;
-        }
-
-        return $response;
-    }
-    public static function sendCommandBool(string $command, array $sites=[], array $servers=[]):bool{
-        $response = self::sendCommand($command, $sites, $servers);
-        if(!is_array($response)){
-            mklog(2, 'Failed to send command to site hoster');
-            return false;
-        }
-
-        if(!$response['success']){
-            if(!isset($response['error']) || empty($response['error'])){
-                mklog(2, 'Generic failure');
-                return false;
-            }
-
-            mklog(2, 'Failed with error: ' . $response['error']);
-            return false;
-        }
-
-        return true;
     }
     //Queries
     public static function listSites():array|false{
