@@ -8,7 +8,7 @@
         "apachemgr": 4,
         "communicator": 6,
         "communicator_client": 5,
-        "communicator_server": 11,
+        "communicator_server": 10,
         "mysql": 1,
         "network": 1,
         "settings": 2
