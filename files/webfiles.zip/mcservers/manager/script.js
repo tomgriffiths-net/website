@@ -54,14 +54,8 @@ function updateServerStats(){
 
         let statebutton = document.getElementById('statebutton');
         if(stats['state'] === "stopped"){
-            if(stats['startable'] === true){
-                statebutton.style.backgroundColor = "red";
-                statebutton.innerHTML = "Start Server";
-            }
-            else{
-                statebutton.style.backgroundColor = "purple";
-                statebutton.innerHTML = "Cannot Start";
-            }
+            statebutton.style.backgroundColor = "red";
+            statebutton.innerHTML = "Start Server";
         }
         else if(stats['state'] === "starting"){
             statebutton.style.backgroundColor = "orange";
@@ -84,8 +78,8 @@ function updateServerStats(){
             statebutton.innerHTML = "Unknown";
         }
 
-        document.getElementById('homepage_backupButton').disabled = !stats['startable'];
-        document.getElementById('homepage_killButton').disabled = stats['startable'];
+        document.getElementById('homepage_backupButton').disabled = (stats['state'] != "stopped");
+        document.getElementById('homepage_killButton').disabled = (stats['state'] == "stopped");
 
         canSendCommand = false;
         if(stats['state'] === "online"){
@@ -93,9 +87,9 @@ function updateServerStats(){
         }
         document.getElementById('homepage_commandButton').disabled = !canSendCommand;
 
-        eventLogText = document.getElementById('homepage_eventLogText');
-        lastText = eventLogText.innerHTML;
-        eventLogText.innerHTML = stats['newoutput'] + lastText;
+        document.getElementById('homepage_eventLogText').innerHTML += stats['newoutput'];
+        eventLog = document.getElementById('homepage_eventLog');
+        eventLog.scrollTo(0, eventLog.scrollHeight);
     }
     
 

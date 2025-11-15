@@ -658,50 +658,34 @@ class website_json{
 class website_mcservers{
     public static function validateId($id):bool{
         $valid = false;
-        if(strlen($id) === 3 && preg_match("/^[0-9]+$/",$id) === 1){
+        if(strlen($id) === 3 && preg_match("/^[0-9]+$/",$id)){
             $valid = true;
         }
         return $valid;
     }
-    public static function sendCompanionData($id, string $action, string $payload = ""):array|bool{
-        $return = false;
-        if(self::validateId($id,false)){
-
-            $socket = @stream_socket_client("tcp://127.0.0.1:25" . $id, $socketErrorCode, $socketErrorString, 1);
-            if(!$socket){
-                runfunction("cmd::newWindow('php\\php.exe cli.php command \"mcservers start-companion " . $id . "\" no-loop true');");
-                return ['state'=>'loading','newoutput'=>''];
-            }
-
-            $data['action'] = $action;
-            $data['payload'] = $payload;
-    
-            $data = base64_encode(json_encode($data));
-    
-            if(fwrite($socket,$data) === false){
-                $return = false;
-                goto end;
-            }
-    
-            $result = fread($socket,1024);
-            if($result === false){
-                $return = false;
-                goto end;
-            }
-    
-            $result = json_decode(base64_decode($result),true);
-            if($result === null){
-                $return = false;
-                goto end;
-            }
-
-            $return = $result;
-
-            end:
-            fclose($socket);
-            return $return;
+    public static function sendCompanionData(string $id, string $action, string $payload = ""):array|bool{
+        if(!self::validateId($id, true)){
+            return false;
         }
-        return $return;
+
+        $result = self::manage($id, $action, $payload);
+
+        if(!is_array($result) || !isset($result['success']) || !$result['success']){
+            return false;
+        }
+
+        if($action === "getStats"){
+            return isset($result['stats']) ? $result['stats'] : false;
+        }
+
+        return true;
+    }
+    public static function manage(string $id, string $action, mixed $extra=null):array|false{
+        if(!self::validateId($id, true)){
+            return false;
+        }
+
+        return website_communicator_client::runfunction('mcservers::manager_run("' . $id . '", unserialize(base64_decode("' . base64_encode(serialize($action)) . '")), unserialize(base64_decode("' . base64_encode(serialize($extra)) . '")))');
     }
 }
 class website_website{

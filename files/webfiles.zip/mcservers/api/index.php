@@ -42,7 +42,22 @@ elseif($f === "sendCommand"){
 elseif($f === "serverStats"){
     $stats = website_mcservers::sendCompanionData($id,"getStats");
     
-    $stats['newoutput'] = str_replace("MCServer Monitor/","", $stats['newoutput']);
+    $lines = explode("\n", $stats['newoutput']);
+    foreach($lines as &$line){
+        if(strpos($line, "MCSM " . $id . "/Info")){
+            $line = '<span style="color:lime;">' . $line . '</span>';
+        }
+        elseif(strpos($line, "MCSM " . $id . "/Warning")){
+            $line = '<span style="color:yellow;">' . $line . '</span>';
+        }
+        elseif(strpos($line, "MCSM " . $id . "/Error")){
+            $line = '<span style="color:red;">' . $line . '</span>';
+        }
+        else{
+            $line = '<span style="color:#999;">' . $line . '</span>';
+        }
+    }
+    $stats['newoutput'] = implode("\n", $lines);
 
     echo json_encode($stats);
 }
@@ -120,7 +135,7 @@ elseif($f === "manager_page_home"){
             <input id="homepage_commandInput" type="text" class="form-control" style="max-width:200px;"></input>
             <button disabled id="homepage_commandButton" onclick="sendCommand(); this.blur();" class="btn btn-success">Send Command</button>
         </div>
-        <div id="homepage_eventLog">
+        <div id="homepage_eventLog" style="height:60%; overflow-x:hidden; overflow-y:scroll;">
             <pre id="homepage_eventLogText"></pre>
         </div>
     ';

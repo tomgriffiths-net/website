@@ -9,7 +9,22 @@ if(!isset($packages['conductor_server'])){
     html::loadurl('/');
 }
 
+if($packages['conductor_server'] > 9){//v10 introduced getJobTimes
+    $jobTimes = runfunction('conductor_server::getJobTimes(5)');
+    if(is_array($jobTimes)){
+        echo '
+            <div class="d-flex" style="width:calc(100% - 60px); height:50px; margin:10px; margin-left:30px; margin-right:30px; background-color:#444; border-radius:5px; align-items:center; justify-content:center; gap:5%; padding-top:6px;">
+                <div><h4>Average job time: ' . round($jobTimes['average_job_time'] / 60) . 'm</h4></div>
+                <div><h4>Current speed: ' . $jobTimes['jobs_per_day_estimate'] . ' jobs/day</h4></div>
+                <div><h4>Estimated time left: ' . round($jobTimes['time_left_estimate'] / 3600) . 'H</h4></div>
+                <div><h4>Estimated finish time: ' . $jobTimes['finish_time_estimate'] . '</h4></div>
+            </div>
+        ';
+    }
+}
+
 echo '<div style="margin-top:10px; margin-left:10px; display:flex; width:calc(100% - 10px);">';
+
 $loops = 0;
 foreach([
     'Successful jobs:' => '\'$successful && $count < 20\', 0, true',
