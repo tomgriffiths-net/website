@@ -5,7 +5,7 @@ html::head();
 echo '
     
 ';
-html::top("admin_mcservers");
+html::top("mcservers");
 
 echo 'Failed';
 

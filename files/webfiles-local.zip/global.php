@@ -531,6 +531,74 @@ class website_communicator{
         }
         return false;
     }
+    public static function sendData($stream, mixed $data, bool $auth=true):bool{
+        if(!is_resource($stream)){
+            return false;
+        }
+
+        $message['name'] = self::getName();
+        if(!is_string($message['name'])){
+            return false;
+        }
+
+        if($auth){
+            $message['password'] = self::getPasswordEncoded();
+            if(!is_string($message['password'])){
+                return false;
+            }
+        }
+
+        $message['time'] = time();
+        $message['data'] = $data;
+
+        $message = json_encode($message);
+        if(!is_string($message)){
+            return false;
+        }
+
+        $message = base64_encode($message);
+
+        return self::send($stream, $message);
+    }
+    public static function receiveData($stream, bool $auth=true):mixed{
+        if(!is_resource($stream)){
+            return false;
+        }
+
+        $message = self::receive($stream);
+        if(!is_string($message)){
+            return false;
+        }
+
+        $message = base64_decode($message);
+        if(!is_string($message)){
+            return false;
+        }
+
+        $message = json_decode($message, true);
+        if(!is_array($message)){
+            return false;
+        }
+
+        if(!isset($message['name']) || !is_string($message['name'])){
+            return false;
+        }
+
+        if($auth){
+            if(!isset($message['password']) || !is_string($message['password'])){
+                return false;
+            }
+            if(!self::verifyPassword($message['password'])){
+                return false;
+            }
+        }
+
+        if(!isset($message['data'])){
+            return false;
+        }
+
+        return $message['data'];
+    }
     // Actions
     public static function close($stream):bool{
         return @fclose($stream);
@@ -543,69 +611,79 @@ class website_communicator{
     }
 }
 class website_communicator_client{
-    public static function runfunction(string $function):mixed{
+    public static function runfunction(string $function, bool $returnErrorString=false):mixed{
+
         $result = self::run('127.0.0.1', 8080, array("type"=>"function_string","payload"=>$function));
+
         if($result["success"]){
             return $result["result"];
         }
+
+        if(isset($result['error']) && is_string($result['error'])){
+            if($returnErrorString){
+                return $result['error'];
+            }
+        }
+
         return false;
     }
-    public static function runcommand(string $command):bool{
+    public static function runcommand(string $command, bool $returnOutput=false):bool{
         $result = self::run('127.0.0.1', 8080, array("type"=>"command","payload"=>$command));
+
+        if($returnOutput){
+            if(is_string($result['result'])){
+                return $result['result'];
+            }
+            else{
+                return "";
+            }
+        }
+
         return $result["success"];
     }
-    public static function run(string $ip, int $port, array $data):array{
-        $socket = website_communicator::connect($ip,$port,false,$socketError,$socketErrorString);
-        if($socket !== false){
-            return self::execute($socket,$data);
+    public static function run(string $ip, int $port, array $data, float|false $timeout=false):array{
+
+        $data['version'] = 2;
+
+        $socket = website_communicator::connect($ip, $port, $timeout, $socketError, $socketErrorString);
+
+        if($socket === false){
+            return [
+                "success" => false,
+                "error" => "Unable to connect to " . $ip . ":" . $port
+            ];
         }
-        return array("success"=>false,"error"=>"Unable to connect to " . $ip . ":" . $port);
+        
+        $result = self::execute($socket, $data);
+
+        @website_communicator::close($socket);
+
+        return $result;
     }
     private static function execute($socket, array $data):array{
-        $return = array("success"=>false);
 
         if(!isset($data['type'])){
-            $return["error"] = "Type not set";
-            goto end;
-        }
-        if(!in_array($data['type'],array("function_string","command","stop"))){
-            $return["error"] = "Type not recognised";
-            goto end;
+            return ["success"=>false, "error"=>"Type not set"];
         }
 
         if(!isset($data['payload'])){
-            $return["error"] = "Payload not set";
-            goto end;
+            return ["success"=>false, "error"=>"Payload not set"];
         }
 
-        $data['name'] = website_communicator::getName();
-        $data['password'] = website_communicator::getPasswordEncoded();
-
-        $data = base64_encode(json_encode($data));
-
-        if(!website_communicator::send($socket,$data)){
-            $return["error"] = "Error sending data";
-            goto end;
+        if(!website_communicator::sendData($socket, $data, true)){
+            return ["success"=>false, "error"=>"Error sending data"];
         }
 
-        $result = website_communicator::receive($socket);
-        if($result === false){
-            $return["error"] = "Error receiving data";
-            goto end;
+        $result = website_communicator::receiveData($socket, true);
+        if(!is_array($result)){
+            return ["success"=>false, "error"=>"Error receiving data"];
         }
 
-        $result = json_decode(base64_decode($result),true);
-        if($result === null){
-            $return["error"] = "Empty response";
-            goto end;
+        if(!isset($result['success']) || !isset($result['result'])){
+            return ["success"=>false, "error"=>"Received incomplete data"];
         }
 
-        $return["success"] = true;
-        $return["result"] = $result;
-
-        end:
-        website_communicator::close($socket);
-        return $return;
+        return $result;
     }
 }
 class website_json{

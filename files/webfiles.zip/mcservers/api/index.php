@@ -94,9 +94,9 @@ elseif($f === "delete_server"){
 }
 elseif($f === "create_server"){
     $datastring = arrayToEvalString(html::decodeInString($_GET['specialData']));
-    if(runfunction('mcservers::createServer(' . $datastring . ');')){
-        $serverId = end(runfunction('mcservers::allServers();'));
-        html::loadurl("/mcservers/list/?range=" . $serverId . "-" . $serverId);
+    $server = runfunction('mcservers::createServer(' . $datastring . ');');
+    if($server){
+        html::loadurl("/mcservers/manager/?setPage=home&id=" . $server);
     }
     else{
         html::loadurl("/mcservers/manager/failed-create/");
