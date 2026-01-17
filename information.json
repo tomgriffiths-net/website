@@ -6,9 +6,9 @@
     "description": "",
     "dependencies": {
         "apachemgr": 4,
-        "communicator": 6,
-        "communicator_client": 5,
-        "communicator_server": 10,
+        "communicator": 7,
+        "communicator_client": 7,
+        "communicator_server": 12,
         "mysql": 1,
         "network": 1,
         "settings": 2
