@@ -853,4 +853,37 @@ class website{
             ],
         ];
     }
+    //Website helpers
+    public static function listFiles(string $dir):?array{
+        if(!is_dir($dir)){
+            return null;
+        }
+
+        $files = glob($dir . "\\*");
+        if(!is_array($files)){
+            return null;
+        }
+        
+        $knownFiles = [];
+        foreach($files as $file){
+            $isDir = is_dir($file);
+            $knownFiles[] = [
+                'isDir' => $isDir,
+                'path' => $file,
+                'modified' => filemtime($file),
+                'size' => files::formatBytes(($isDir ? 0 : filesize($file))),
+                'isBinary' => ($isDir ? false : self::listFiles_isBinary($file))
+            ];
+        }
+
+        return $knownFiles;
+    }
+    private static function listFiles_isBinary(string $file):bool{
+        $fh = fopen($file, 'rb');
+        $chunk = fread($fh, 1024);
+        fclose($fh);
+
+        return strpos($chunk, "\0") !== false;
+
+    }
 }

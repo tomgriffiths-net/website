@@ -6,7 +6,7 @@ html::fullhead("mcservers","All Servers",'style.css');
 
 echo '<script src="script.v2.js"></script>';
 
-$serverStates = runfunction('mcservers::manager_getStates(true)');
+$serverStates = runfunction('mcservers::manager_getServerStates(true)');
 
 if(is_array($serverStates)){
     foreach($serverStates as $id => $info){

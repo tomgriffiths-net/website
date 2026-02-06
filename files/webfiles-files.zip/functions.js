@@ -79,3 +79,93 @@ function debounceBasedOnFirstParameter(func, wait=500){
         timeouts.set(firstParam, timeoutId);
     };
 }
+
+let lastPaths = [];
+let currentBase = null;
+function hideFileViewer(){
+    document.getElementById('fileViewer').style.display = "none";
+    //document.getElementById('fileViewerCover').style.display = "none";
+    currentBase = false;
+}
+function showFileViewer(path){
+    document.getElementById('fileViewer').style.display = "";
+    //document.getElementById('fileViewerCover').style.display = "";
+    fileViewerLoad(path);
+}
+function fileViewerLoad(path, log=true){
+    if(!currentBase){
+        currentBase = path;
+    }
+
+    if(log){
+        lastPaths.push(document.getElementById("somewhereOnPlanetEarth").innerHTML);
+    }
+
+    let url = "/api.php?function=filesList";
+    if(path){
+        url += "&path=" + path;
+    }
+    else if(currentBase){
+        url += "&path=" + currentBase;
+    }
+
+    ajax(url, "filesList");
+}
+function saveFileTextarea(){
+    let path = document.getElementById("somewhereOnPlanetEarth").innerHTML;
+    let url = "/api.php?function=filesListSave&file=" + path;
+    let data = document.getElementById("filesListFileContents").value;
+
+    const xhttp = new XMLHttpRequest();
+    xhttp.onload = function(){
+        eval(this.responseText);
+    }
+    xhttp.open("POST", url);
+    xhttp.setRequestHeader("Content-Type", "text/plain");
+    xhttp.send(data);
+}
+
+function fileslistDragStart(e) {
+    fileslistInitialX = e.clientX - fileslistXOffset;
+    fileslistInitialY = e.clientY - fileslistYOffset;
+
+    if (e.target === fileslistDragHandle) {
+        fileslistIsDragging = true;
+    }
+}
+function fileslistTouchStart(e) {
+    fileslistInitialX = e.touches[0].clientX - fileslistXOffset;
+    fileslistInitialY = e.touches[0].clientY - fileslistYOffset;
+
+    if (e.target === fileslistDragHandle) {
+        fileslistIsDragging = true;
+    }
+}
+function fileslistDrag(e) {
+    if (fileslistIsDragging) {
+        e.preventDefault();
+        fileslistCurrentX = e.clientX - fileslistInitialX;
+        fileslistCurrentY = e.clientY - fileslistInitialY;
+        fileslistXOffset = fileslistCurrentX;
+        fileslistYOffset = fileslistCurrentY;
+        fileslistSetTranslate(fileslistCurrentX, fileslistCurrentY, fileslistDraggableDiv);
+    }
+}
+function fileslistTouchMove(e) {
+    if (fileslistIsDragging) {
+        e.preventDefault();
+        fileslistCurrentX = e.touches[0].clientX - fileslistInitialX;
+        fileslistCurrentY = e.touches[0].clientY - fileslistInitialY;
+        fileslistXOffset = fileslistCurrentX;
+        fileslistYOffset = fileslistCurrentY;
+        fileslistSetTranslate(fileslistCurrentX, fileslistCurrentY, fileslistDraggableDiv);
+    }
+}
+function fileslistSetTranslate(xPos, yPos, el) {
+    el.style.transform = `translate(calc(-50% + ${xPos}px), calc(-50% + ${yPos}px))`;
+}
+function fileslistDragEnd() {
+    fileslistInitialX = fileslistCurrentX;
+    fileslistInitialY = fileslistCurrentY;
+    fileslistIsDragging = false;
+}

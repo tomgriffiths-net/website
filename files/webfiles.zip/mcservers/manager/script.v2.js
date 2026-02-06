@@ -3,7 +3,7 @@ let serverInfo = JSON.parse(ajax_mcserver('/mcservers/api/?function=serverInfo&i
 
 function setContentPage(pageName){
     document.getElementById('contentPageName').innerHTML = pageName;
-    ajax('/mcservers/api/?function=manager_page_' + pageName + '&id=' + serverId,'content',0);
+    ajax('/mcservers/api/?function=manager_page_' + pageName + '&id=' + serverId,'content');
 }
 function currentPage(){
     let page = document.getElementById('contentPageName');
@@ -22,10 +22,11 @@ function ajax_mcserver(url){
     return xhttp.responseText;
 }
 function updateServerStats(){
-    var stats = JSON.parse(ajax_mcserver('/mcservers/api/?function=serverStats&id=' + serverId));
     pageName = currentPage();
     if(pageName === "home"){
-        memoryPercent = (stats['memory']/serverInfo['run']['max_ram_mb'])*100;
+        var stats = JSON.parse(ajax_mcserver('/mcservers/api/?function=serverStats&id=' + serverId));
+
+        memoryPercent = (stats['memory']/serverInfo['run']['maxMem'])*100;
         memoryUsageBar = document.getElementById('servermemoryusage');
         memoryUsageBar.style.width = memoryPercent + "%";
         if(memoryPercent > 90){
@@ -87,9 +88,14 @@ function updateServerStats(){
         }
         document.getElementById('homepage_commandButton').disabled = !canSendCommand;
 
-        document.getElementById('homepage_eventLogText').innerHTML += stats['newoutput'];
         eventLog = document.getElementById('homepage_eventLog');
-        eventLog.scrollTo(0, eventLog.scrollHeight);
+        let atBottom = eventLog.scrollTop + eventLog.clientHeight + 10 > eventLog.scrollHeight;
+
+        document.getElementById('homepage_eventLogText').innerHTML += stats['newoutput'];
+        
+        if(atBottom){
+            eventLog.scrollTo(0, eventLog.scrollHeight);
+        }
     }
     
 
@@ -170,4 +176,29 @@ function modrinthContentApply(projectId, projectVersion){
         document.getElementById('modrinthContentSearchBar').disabled = false;
         document.getElementById('modrinthContentSearchBar').value = "";
     }, 500);
+}
+
+function updateVersions(type, min=null){
+    let url = "/mcservers/api/?function=listVersions&noid=true&type=" + type;
+
+    const channels = document.getElementById("channels");
+    if(channels){
+        url += "&channel=" + channels.value;
+    }
+
+    if(min){
+        url += "&min=" + min;
+    }
+
+    ajax(url, "versions");
+}
+function updateSpecialVersions(type){
+    let url = "/mcservers/api/?function=listSpecialVersions&noid=true&type=" + type + "&version=" + document.getElementById("versions").value;
+
+    const channels = document.getElementById("channels");
+    if(channels){
+        url += "&channel=" + channels.value;
+    }
+
+    ajax(url, "specialversions");
 }

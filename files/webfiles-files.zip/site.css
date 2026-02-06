@@ -23,3 +23,106 @@ body {
         transform: rotate(360deg);
     }
 }
+
+#fileViewerCover{
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+}
+#fileViewer{
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 60%;
+    
+    background-color: rgb(63, 63, 63);
+    border-radius: 10px;
+    box-shadow: 4px 4px 5px 5px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    
+    z-index:100;
+}
+#fileViewerHandle{
+    position: absolute;
+    top: 0;
+    lefT: 30%;
+    right: 30%;
+    height: 20px;
+    cursor: move;
+    background-color: grey;
+    overflow: hidden;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+#filesListClose{
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 30px;
+    width: 50px;
+    cursor: pointer;
+}
+#filesListClose:hover{
+    background-color: rgb(255, 30, 30);
+}
+#filesListClose > img{
+    filter: invert(85%);
+    width: 24px;
+    height: 24px;
+    position: absolute;
+    right: 13px;
+    top: 3px;
+}
+#filesList{
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    bottom: 28px;
+    right: 20px;
+
+    border: 1px solid grey;
+    border-radius: 2px;
+
+    overflow: auto;
+}
+.fileListItem{
+    width: 100%;
+    height: 40px;
+    position: relative;
+
+    cursor: default;
+
+    overflow: hidden;
+}
+.fileListItem:hover{
+    background-color: rgb(104, 104, 104);
+}
+.fileListItem > img{
+    height: 40px;
+    width: 40px;
+}
+.fileListItem > span{
+    font-size: 20px;
+    position: absolute;
+    top: 3px;
+}
+.fileListItem > span:nth-of-type(1){
+    cursor: pointer;
+    left: 50px;
+    right: 40%;
+}
+.fileListItem > span:nth-of-type(2){
+    font-size: 18px;
+    top: 5px;
+
+    left:60%;
+    right:15%;
+}
+.fileListItem > span:nth-of-type(3){
+    left:85%;
+    right:0;
+}

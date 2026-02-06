@@ -1,6 +1,4 @@
 <?php
-startup::checkGetRequest();
-
 if(!isset($skipAuth)){
     $skipAuth = false;
 }
@@ -31,14 +29,6 @@ if($globalSettings['verbose-logging'] === true){
 }
 
 class startup{
-    public static function checkGetRequest(){
-        if(implode($_GET) !== ""){
-            if(preg_match("/^[a-zA-Z0-9 ._-]+$/", implode($_GET)) == false){
-                mklog("bad-ping",$_SERVER["REQUEST_URI"],false);
-                exit;
-            }
-        }
-    }
     public static function loadGlobalSettings($settingsFile){
         if(!is_file($settingsFile)){
             echo "Settings file not found";
@@ -268,6 +258,40 @@ class html{
         </head>
         <body data-bs-theme="dark">';
         echo '
+            <div id="fileViewer" style="display:none; user-select:none; overflow:hidden; transform:translate(-50%, -50%);">
+                <img onclick="fileViewerLoad(lastPaths.pop(), false);" src="' . $GLOBALS['filesUrl'] . '/img/push-arrow-icon.png" style="position:absolute; top:7px; left:20px; height:26px; transform:rotate(180deg); filter:invert(75%); cursor:pointer;">
+                <button disabled id="fileViewerSave" onclick="saveFileTextarea();" class="btn btn-success" style="position:absolute; top:5px; left:100px; width:60px; height:30px;"><span style="position:relative; top:-3px;">Save</span></button>
+                <div id="fileViewerHandle"></div>
+                <div id="filesListClose" onclick="hideFileViewer();">
+                    <img src="' . $GLOBALS['filesUrl'] . '/img/window-close.png">
+                </div>
+                <div id="filesList">
+                    
+                </div>
+                <span id="somewhereOnPlanetEarth" style="position:absolute; font-size:14px; bottom:5px; left:20px;"></span>
+            </div>
+            <script>
+                const fileslistDraggableDiv = document.getElementById("fileViewer");
+                const fileslistDragHandle = document.getElementById("fileViewerHandle");
+                let fileslistIsDragging = false;
+                let fileslistCurrentX;
+                let fileslistCurrentY;
+                let fileslistInitialX;
+                let fileslistInitialY;
+                let fileslistXOffset = 0;
+                let fileslistYOffset = 0;
+
+                // Mouse Events
+                fileslistDragHandle.addEventListener("mousedown", fileslistDragStart);
+                document.addEventListener("mousemove", fileslistDrag);
+                document.addEventListener("mouseup", fileslistDragEnd);
+
+                // Touch Events
+                fileslistDragHandle.addEventListener("touchstart", fileslistTouchStart);
+                document.addEventListener("touchmove", fileslistTouchMove);
+                document.addEventListener("touchend", fileslistDragEnd);
+            </script>
+            <!--<div id="fileViewerCover" style="display:none;" onclick="hideFileViewer();"></div>-->
             <div class="wrapper">
                 <nav class="navbar navbar-expand-lg bg-body-tertiary">
                     <div class="container-fluid">

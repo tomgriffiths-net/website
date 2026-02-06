@@ -24,7 +24,43 @@ if(!isset($_GET['noid'])){
     }
 }
 
-if($f === "start_server"){
+if($f === "listVersions"){
+    if(!isset($_GET['type'])){
+        echo "Type not set";
+        exit;
+    }
+    if(!isset($_GET['channel'])){
+        $_GET['channel'] = null;
+    }
+
+    $versions = runfunction('mcservers::listVersions(base64_decode(\'' . base64_encode($_GET['type']) . '\'), base64_decode(\'' . base64_encode($_GET['channel']) . '\')' . (isset($_GET['min']) ? ',base64_decode(\'' . base64_encode($_GET['min']) . '\')' : '') . ')');
+
+    foreach($versions as $version){
+        echo '<option value="' . $version . '">' . $version . '</option>';
+    }
+
+    echo '<script>updateSpecialVersions("' . $_GET['type'] . '");</script>';
+}
+elseif($f === "listSpecialVersions"){
+    if(!isset($_GET['type'])){
+        echo "Type not set";
+        exit;
+    }
+    if(!isset($_GET['version'])){
+        echo "Version not set";
+        exit;
+    }
+    if(!isset($_GET['channel'])){
+        $_GET['channel'] = null;
+    }
+
+    $versions = runfunction('mcservers::listSpecialVersions(unserialize(\'' . serialize($_GET['type']) . '\'), unserialize(\'' . serialize($_GET['version']) . '\'), unserialize(\'' . serialize($_GET['channel']) . '\'))');
+
+    foreach($versions as $version){
+        echo '<option value="' . $version . '">' . $version . '</option>';
+    }
+}
+elseif($f === "start_server"){
     website_mcservers::sendCompanionData($id,"start");
 }
 elseif($f === "stop_server"){
@@ -72,7 +108,7 @@ elseif($f === "delete_server"){
     }
     else{
         html::head();
-        html::top("admin_mcservers","Delete server");
+        html::top("mcservers","Delete server");
         echo '
             <h2>Are you sure you want to delete server ' . $id . '?<br>This cannot be undone!</h2>
             <br>
@@ -92,21 +128,79 @@ elseif($f === "delete_server"){
         html::end2();
     }
 }
-elseif($f === "create_server"){
-    $datastring = arrayToEvalString(html::decodeInString($_GET['specialData']));
-    $server = runfunction('mcservers::createServer(' . $datastring . ');');
+elseif($f === "createServer"){
+    $data = html::decodeInString($_GET['data']);
+    if(!is_array($data)){
+        echo "Invalid data";
+        exit;
+    }
+
+    $version = [
+        'type' => $data['type'],
+        'version' => $data['version'],
+        'specialVersion' => $data['specialversion']
+    ];
+
+    $serverData = [
+        'name' => $data['name'],
+        'run' => [
+            'maxMem' => (int) $data['maxMem'],
+            'minMem' => (int) $data['minMem'],
+            'hideGui' => ($data['hideGui'] === "true"),
+            'stopCommand' => $data['stopCommand']
+        ],
+        'abilities' => [
+            'mods' => ($data['mods'] === "true"),
+            'plugins' => ($data['plugins'] === "true"),
+            'datapacks' => ($data['datapacks'] === "true"),
+            'resourcepacks' => ($data['resourcepacks'] === "true"),
+        ],
+        'spec' => [
+            'hasRcon' => ($data['hasRcon'] === "true")
+        ]
+    ];
+
+    $server = runfunction('mcservers::createServer(unserialize(base64_decode("' . base64_encode(serialize($version)) . '")), unserialize(base64_decode("' . base64_encode(serialize($data)) . '")));');
     if($server){
-        html::loadurl("/mcservers/manager/?setPage=home&id=" . $server);
+        echo '
+            <p>Created!</p>
+            <script>window.location.href= "/mcservers/manager/?setPage=home&id=' . $server . '";</script>
+        ';
     }
     else{
-        html::loadurl("/mcservers/manager/failed-create/");
+        echo '
+            <p>Failed to create server.</p>
+        ';
     }
 }
-elseif($f === "publicServer"){
-    runfunction('mcservers::addSubdomainToServer("' . $id . '");');
-}
-elseif($f === "privateServer"){
-    runfunction('mcservers::deleteSubdomainForServer("' . $id . '");');
+elseif($f === "updateServer"){
+    if(!isset($_GET['version'])){
+        echo "Version not set";
+        exit;
+    }
+    if(!isset($_GET['specialversion'])){
+        echo "Special Version not set";
+        exit;
+    }
+
+    $data = [
+        'version' => $_GET['version'],
+        'specialVersion' => $_GET['specialversion'],
+    ];
+
+    if(runfunction('mcservers::updateServer("' . $id . '", unserialize(\'' . serialize($data) . '\'))')){
+        echo '
+            Updated!
+            <script>
+                setTimeout(() => {
+                    window.location.href = "/mcservers/manager/?setPage=home&id=' . $id . '";
+                }, 2000);
+            </script>
+        ';
+    }
+    else{
+        echo "Failed to update server to version " . $_GET['version'] . (!empty($_GET['specialversion']) ? "/" . $_GET['specialversion'] : "");
+    }
 }
 elseif($f === "manager_page_home"){
     echo '
@@ -140,36 +234,6 @@ elseif($f === "manager_page_home"){
         </div>
     ';
 }
-elseif($f === "manager_page_files"){
-    $dir = getServerDir($id);
-    echo '<form action="/mcservers/api/?function=manager_files_submit&id=' . $id . '" method="post">';
-    $files = glob($dir . '*.*');
-    $fileSettings = array();
-    foreach($files as $file){
-        $file = str_replace("/","\\",$file);
-        $fileType = substr($file,strripos($file,".")+1);
-        $fileName = substr($file,strripos($file,"\\")+1);
-        $noEditFiles = array();
-        $editTypes = array('yaml','yml','json','properties','bat','txt','toml','console_history');
-        $showFile = false;
-        foreach($editTypes as $editType){if($editType === $fileType){$showFile = true;}}
-        foreach($noEditFiles as $noEditFile){if($noEditFile === $fileName){$showFile = false;}}
-        if($showFile){
-            $fileNameID = str_replace(".",":_dot_:",$fileName);
-            $fileNameID = str_replace("\\",":_slash_:",$fileNameID);
-            echo '
-                <div class="dropdown mb-3">
-                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">' . $fileName . '</button>
-                    <ul class="dropdown-menu">
-                        <li><textarea style="height:300px;width:600px;" type="text" name="' . $fileNameID . '">' . file_get_contents($dir . $fileName) . '</textarea></li>
-                    </ul>
-                </div>
-            ';
-        }
-    }
-    echo '<button class="btn btn-success" type="submit" name="submit">Apply</button>
-    </form>';
-}
 elseif($f === "manager_files_submit"){
     $dir = getServerDir($id);
     foreach($_POST as $fileName => $fileValue){
@@ -183,8 +247,13 @@ elseif($f === "manager_files_submit"){
 }
 elseif($f === "manager_page_runtime"){
     $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
-    if($serverInfo['capabilities']['hasPropertiesFile'] === true){
+    if($serverInfo['spec']['hasPropertiesFile'] === true){
         echo '<button class="btn btn-primary" onclick="setContentPage(\'runtime_serverproperties\');">server.properties</button>';
+    }
+
+    $runCommand = runfunction('mcservers::whatIsTheStartCommand("' . $id . '")');
+    if(is_string($runCommand)){
+        echo '<div style="margin-top:20px;">Run command: ' . $runCommand . '</div>';
     }
 }
 elseif($f === "manager_page_runtime_serverproperties"){
@@ -250,7 +319,7 @@ elseif($f === "manager_runtime_serverproperties_submit"){
             $newProperties[$potentialPropertyName] = $potentialPropertyValue;
         }
     }
-    if(runfunction('mcservers::modifyServerPropertiesFile("' . $id . '",' . arrayToEvalString($newProperties) . ');')){
+    if(runfunction('mcservers::writeServerPropertiesFile("' . $id . '",' . arrayToEvalString($newProperties) . ');')){
         html::loadurl('/mcservers/manager/?setPage=runtime_serverproperties&settingsApplied=true&id=' . $id);
     }
     else{
@@ -297,9 +366,55 @@ elseif($f === "manager_page_plugins_addnew"){
 elseif($f === "manager_page_resourcepacks_addnew"){
     echo modrinthInitialHtml();
 }
+elseif($f === "manager_page_update"){
+    $serverInfo = runfunction('mcservers::serverInfo("' . $id . '")');
+    if(!is_array($serverInfo)){
+        echo "Failed to get server information";
+        exit;
+    }
+
+    if(is_string($serverData['setup']['installerFunction'])){
+        echo "Unable to update servers that have an installer.";
+        exit;
+    }
+
+    echo '<style>.form-select{max-width:400px;}</style>';
+
+    $channels = runfunction('mcservers::listChannels(base64_decode(\'' . base64_encode($serverInfo['version']['type']) . '\'))');
+    if(is_array($channels) && !empty($channels)){
+        echo '
+            <h5>Select update channel:<br></h5>
+            <select id="channels" class="form-select" onchange="updateVersions(\'' . $serverInfo['version']['type'] . '\',\'' . $serverInfo['version']['version'] . '\');">
+                ';
+                foreach($channels as $channel){
+                    $name = ucfirst($channel);
+                    echo '<option value="' . $channel . '">' . $name . '</option>';
+                }
+                echo '
+            </select>
+            <script>updateVersions(\'' . $serverInfo['version']['type'] . '\',\'' . $serverInfo['version']['version'] . '\');</script>
+            <br>
+        ';
+    }
+
+    echo '
+        <h5>Select major version:<br></h5>
+        <select id="versions" class="form-select" onchange="updateSpecialVersions(\'' . $serverInfo['version']['type'] . '\');">
+        </select>
+        <br>
+
+        <h5>Select minor version:<br></h5>
+        <select id="specialversions" class="form-select">
+        </select>
+        <br>
+
+        <button class="btn btn-success" onclick="ajax(\'/mcservers/api/?function=updateServer&id=' . $id . '&version=\' + document.getElementById(\'versions\').value + \'&specialversion=\' + document.getElementById(\'specialversions\').value,\'content\');">Update</button>
+    ';
+}
 elseif($f === "manager_page_actions"){
     echo '
         <button onclick="window.location.href=\'/mcservers/api/?function=delete_server&id=' . $id . '\';" class="btn btn-danger">Delete Server</button>
+        <button onclick="setContentPage(\'update\');" class="btn btn-primary">Update Server</button>
     ';
 }
 elseif($f === "modrinthContentSearch"){
@@ -500,7 +615,7 @@ function modrinthInitialHtml():string{
         <div style="width:700px; height:600px; background-color:white; border-radius:5px; padding:5px;">
             <div style="display:flex; height:40px;">
                 <input id="modrinthContentSearchBar" data-bs-theme="light" onkeyup="modrinthContentSearchDebounced();" style="width:625px; height:100%" class="form-control mr-sm-2" type="text" placeholder="Search Modrinth">
-                <div id="modrinthContentSearchButton" onclick="modrinthContentSearch();" style="position:relative; width:60px; height:100%; border-color:lightgrey; border-radius:5px; border-width:1px; border-style:solid; cursor:pointer;">
+                <div id="modrinthContentSearchButton" onclick="modrinthContentSearch();" style="position:relative; width:60px; height:100%; margin-left:5px; border-color:lightgrey; border-radius:5px; border-width:1px; border-style:solid; cursor:pointer;">
                     <img id="modrinthContentSearchButtonImage" style="position:relative; top:50%; left:50%; transform:translate(-50%, -50%); height:30px; filter:invert(100%);" src="' . $GLOBALS['filesUrl'] . '/img/search.png">
                 </div>
             </div>

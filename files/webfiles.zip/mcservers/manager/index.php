@@ -12,6 +12,7 @@ if(!website_mcservers::validateId($id)){
 html::fullhead("mcservers","Edit Server","style.css");
 
 $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
+$serverDir = str_replace("\\", "/", runfunction('mcservers::serverDir("' . $id . '")'));
 
 ?>
 
@@ -20,16 +21,12 @@ $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
         <img src="<?php echo $filesUrl; ?>/img/house.webp">
         <a>Home</a>
     </div>
-    <div onclick="setContentPage('files');">
-        <img src="<?php echo $filesUrl; ?>/img/folder.png">
-        <a>Files</a>
-    </div>
     <div onclick="setContentPage('runtime');">
         <img src="<?php echo $filesUrl; ?>/img/bash.png">
         <a>Run</a>
     </div>
     <?php
-        if($serverInfo['capabilities']['allowDatapacks'] === true){
+        if($serverInfo['abilities']['datapacks'] === true){
             echo '
                 <div onclick="setContentPage(\'datapacks\');">
                     <img src="' . $filesUrl . '/img/html-code.svg">
@@ -37,7 +34,7 @@ $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
                 </div>
             ';
         }
-        if($serverInfo['capabilities']['allowResourcepacks'] === true){
+        if($serverInfo['abilities']['resourcepacks'] === true){
             echo '
                 <div onclick="setContentPage(\'resourcepacks\');">
                     <img src="' . $filesUrl . '/img/zip-file.svg">
@@ -45,7 +42,7 @@ $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
                 </div>
             ';
         }
-        if($serverInfo['capabilities']['allowMods'] === true){
+        if($serverInfo['abilities']['mods'] === true){
             echo '
                 <div onclick="setContentPage(\'mods\');">
                     <img src="' . $filesUrl . '/img/modification.svg">
@@ -53,7 +50,7 @@ $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
                 </div>
             ';
         }
-        if($serverInfo['capabilities']['allowPlugins'] === true){
+        if($serverInfo['abilities']['plugins'] === true){
             echo '
                 <div onclick="setContentPage(\'plugins\');">
                     <img src="' . $filesUrl . '/img/puzzle-piece.png">
@@ -66,7 +63,10 @@ $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
         <img src="<?php echo $filesUrl; ?>/img/settings.svg">
         <a>Actions</a>
     </div>
-
+    <div onclick="showFileViewer('<?php echo $serverDir; ?>');">
+        <img src="<?php echo $filesUrl; ?>/img/folder.png">
+        <a>Files</a>
+    </div>
     
     <a id="contentPageName" style="bottom:22px;"></a>
     <a id="globalServerId"><?php echo $id; ?></a>
@@ -75,7 +75,7 @@ $serverInfo = runfunction('mcservers::serverInfo("' . $id . '");');
 <div id="content">
 </div>
 
-<script src="script.js"></script>
+<script src="script.v2.js"></script>
 
 <?php
 

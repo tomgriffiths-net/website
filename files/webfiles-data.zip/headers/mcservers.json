@@ -11,13 +11,8 @@
             "link": "\/mcservers\/list\/"
         },
         {
-            "name": "ServerManager",
-            "dropdown": [
-                {
-                    "name": "Create Server",
-                    "link": "\/mcservers\/manager\/create\/"
-                }
-            ]
+            "name": "Create Server",
+            "link": "\/mcservers\/manager\/create\/"
         }
     ]
 }
